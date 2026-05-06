@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-size-base: 15px;
+  --bg: #ffffff;
+  --bg2: #f4f4f5;
+  --text: #18181b;
+  --text2: #71717a;
+  --border: #e4e4e7;
+  --accent: #6d4af7;
+  --accent-hover: #5a38e0;
+  --success: #16a34a;
+  --danger: #dc2626;
+}
+
+[data-theme="dark"] {
+  --bg: #18181b;
+  --bg2: #27272a;
+  --text: #fafafa;
+  --text2: #a1a1aa;
+  --border: #3f3f46;
+  --accent: #7c6af7;
+  --accent-hover: #9580ff;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: var(--font-size-base);
+  background: var(--bg);
+  color: var(--text);
+  min-width: 380px;
+  max-width: 480px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.btn {
+  @apply px-4 py-2 rounded-lg font-medium text-sm transition-all cursor-pointer;
+  background: var(--accent);
+  color: white;
+  border: none;
+}
+.btn:hover { background: var(--accent-hover); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ghost {
+  @apply px-3 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer;
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: var(--bg2); color: var(--text); }
+
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  @apply rounded-xl p-4;
+}
+
+.tab-active {
+  border-bottom: 2px solid var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
