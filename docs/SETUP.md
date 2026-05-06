@@ -153,7 +153,6 @@ Get your live URL:
 Now go back and add the Stripe webhook URL:
 10. Return to Stripe → Webhooks → update endpoint URL to your Railway domain
 
-
 ═══════════════════════════════════════════════════════════
  PHASE 3 — CHROME EXTENSION SETUP
 ═══════════════════════════════════════════════════════════
