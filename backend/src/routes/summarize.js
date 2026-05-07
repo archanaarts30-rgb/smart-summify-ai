@@ -38,7 +38,8 @@ router.post('/guest', guestRateLimit, async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('Guest summarize error:', err);
-    res.status(500).json({ error: 'Summarization failed. Please try again.' });
+    const msg = err?.message || '';
+    res.status(500).json({ error: `Summarization failed: ${msg || 'Unknown error'}` });
   }
 });
 
@@ -70,7 +71,14 @@ router.post('/', authenticate, checkSummaryQuota, async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('Summarize error:', err);
-    res.status(500).json({ error: 'Summarization failed. Please try again.' });
+    const msg = err?.message || '';
+    if (msg.includes('API_KEY') || msg.includes('api key') || msg.includes('API key')) {
+      return res.status(500).json({ error: 'Gemini API key is missing or invalid. Check GEMINI_API_KEY in Railway.' });
+    }
+    if (msg.includes('not found') || msg.includes('404') || msg.includes('model')) {
+      return res.status(500).json({ error: `Gemini model error: ${msg}` });
+    }
+    res.status(500).json({ error: `Summarization failed: ${msg || 'Unknown error'}` });
   }
 });
 
