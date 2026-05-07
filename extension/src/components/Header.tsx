@@ -2,7 +2,11 @@ import React from 'react';
 import { useStore } from '../store';
 import { logout } from '../lib/firebase';
 
-export default function Header() {
+interface HeaderProps {
+  onSignInClick: () => void;
+}
+
+export default function Header({ onSignInClick }: HeaderProps) {
   const { user, clearUser, theme, toggleTheme, fontSize, increaseFontSize, decreaseFontSize } = useStore();
 
   const handleLogout = async () => {
@@ -22,7 +26,7 @@ export default function Header() {
       padding: '10px 14px', background: 'var(--bg)',
       borderBottom: '1px solid var(--border)',
     }}>
-      {/* Logo + plan */}
+      {/* Logo + plan badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--accent)' }}>Smart Summify</span>
         {user && (
@@ -47,10 +51,26 @@ export default function Header() {
           {theme === 'dark' ? '☀' : '◑'}
         </button>
 
-        {/* Logout */}
-        <button onClick={handleLogout} title="Sign out" style={{ ...iconBtn, color: 'var(--danger)' }}>
-          ⏏
-        </button>
+        {/* Sign in (guest) or Sign out (logged in) */}
+        {user ? (
+          <button onClick={handleLogout} title="Sign out" style={{ ...iconBtn, color: 'var(--danger)' }}>
+            ⏏
+          </button>
+        ) : (
+          <button
+            onClick={onSignInClick}
+            title="Sign in"
+            style={{
+              ...iconBtn,
+              color: 'var(--accent)',
+              borderColor: 'var(--accent)',
+              fontWeight: 700,
+              padding: '3px 10px',
+            }}
+          >
+            Sign in
+          </button>
+        )}
       </div>
     </div>
   );

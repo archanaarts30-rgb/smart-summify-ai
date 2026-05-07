@@ -8,12 +8,13 @@
     "activeTab",
     "storage",
     "scripting",
-    "sidePanel"
+    "identity"
   ],
 
   "host_permissions": [
     "http://localhost:3001/*",
-    "https://your-backend.railway.app/*"
+    "https://smart-summify-ai-development.up.railway.app/*",
+    "https://smart-summify-ai-production.up.railway.app/*"
   ],
 
   "background": {
@@ -31,12 +32,6 @@
     "default_title": "Smart Summify AI"
   },
 
-  "side_panel": {
-    "default_path": "sidepanel.html"
-  },
-
-  "options_page": "options.html",
-
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -53,8 +48,13 @@
 
   "web_accessible_resources": [
     {
-      "resources": ["fonts/*", "icons/*"],
+      "resources": ["fonts/*", "icons/*", "assets/*"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+
+  "oauth2": {
+    "client_id": "%VITE_GOOGLE_OAUTH_CLIENT_ID%",
+    "scopes": ["openid", "email", "profile"]
+  }
 }

@@ -11,14 +11,19 @@ import Header from '../components/Header';
 type Tab = 'summary' | 'chat' | 'export' | 'history';
 
 export default function App() {
-  const { user, setUser, clearUser, theme, fontSize } = useStore();
+  const { user, setUser, clearUser, theme, fontSize, showAuthModal, setShowAuthModal } = useStore();
   const [tab, setTab] = useState<Tab>('summary');
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
     const unsub = onAuthChange(async (firebaseUser) => {
       if (firebaseUser) {
-        // Fetch full profile from backend (plan info etc.)
+        const fallbackUser = {
+          id: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || '',
+          plan: 'free' as const,
+        };
         try {
           const token = await firebaseUser.getIdToken();
           const res = await fetch(`${import.meta.env.VITE_API_URL}/v1/users/me`, {
@@ -27,9 +32,11 @@ export default function App() {
           if (res.ok) {
             const data = await res.json();
             setUser(data.user);
+          } else {
+            setUser(fallbackUser);
           }
-        } catch (e) {
-          setUser({ id: '', email: firebaseUser.email || '', displayName: firebaseUser.displayName || '', plan: 'free' });
+        } catch {
+          setUser(fallbackUser);
         }
       } else {
         clearUser();
@@ -47,18 +54,16 @@ export default function App() {
     );
   }
 
-  if (!user) return <AuthScreen />;
-
   const tabs: { id: Tab; label: string }[] = [
     { id: 'summary', label: 'Summarize' },
-    { id: 'chat', label: 'Chat' },
-    { id: 'export', label: 'Export' },
+    { id: 'chat',    label: 'Chat' },
+    { id: 'export',  label: 'Export' },
     { id: 'history', label: 'History' },
   ];
 
   return (
     <div data-theme={theme} style={{ '--font-size-base': `${fontSize}px` } as React.CSSProperties}>
-      <Header />
+      <Header onSignInClick={() => setShowAuthModal(true)} />
 
       {/* Tab bar */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
@@ -82,10 +87,23 @@ export default function App() {
       {/* Tab content */}
       <div style={{ background: 'var(--bg)', minHeight: 400 }}>
         {tab === 'summary' && <SummaryTab />}
-        {tab === 'chat' && <ChatTab />}
-        {tab === 'export' && <ExportTab />}
+        {tab === 'chat'    && <ChatTab />}
+        {tab === 'export'  && <ExportTab />}
         {tab === 'history' && <HistoryTab />}
       </div>
+
+      {/* Auth modal overlay — shown when guest hits limit or clicks Sign In */}
+      {showAuthModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{ width: '100%', maxHeight: '100%', overflowY: 'auto' }}>
+            <AuthScreen onClose={() => setShowAuthModal(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

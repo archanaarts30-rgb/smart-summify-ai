@@ -1,13 +1,45 @@
 const express = require('express');
 const multer = require('multer');
+const { rateLimit } = require('express-rate-limit');
 const { authenticate, checkSummaryQuota } = require('../middleware/auth');
-const { summarize } = require('../services/summarizeService');
+const { summarize, summarizeGuest } = require('../services/summarizeService');
 const { extractText } = require('../services/documentService');
 
 const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB hard cap; enforced per-plan below
+  limits: { fileSize: 50 * 1024 * 1024 },
+});
+
+// Stricter rate limit for unauthenticated guest summarization: 3 per 24h per IP
+const guestRateLimit = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'You have used your 3 free summaries. Sign up for free to continue.' },
+  keyGenerator: (req) => req.ip,
+});
+
+// ─── Guest summarize (no auth — short summaries only, not logged to DB) ────
+router.post('/guest', guestRateLimit, async (req, res) => {
+  try {
+    const { content, sourceUrl } = req.body;
+
+    if (!content || content.trim().length < 50) {
+      return res.status(400).json({ error: 'Content too short to summarize (min 50 characters).' });
+    }
+
+    const result = await summarizeGuest({
+      content: content.trim(),
+      sourceUrl: sourceUrl || null,
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('Guest summarize error:', err);
+    res.status(500).json({ error: 'Summarization failed. Please try again.' });
+  }
 });
 
 router.post('/', authenticate, checkSummaryQuota, async (req, res) => {

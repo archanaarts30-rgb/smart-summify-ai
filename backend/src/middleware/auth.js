@@ -4,7 +4,7 @@ const supabase = require('../config/supabase');
 // ─── Plan limits ────────────────────────────────────────────────────
 const PLAN_LIMITS = {
   free: {
-    summaries_per_day: 5,
+    summaries_per_day: 3,
     chat_messages_per_summary: 0,
     sizes_allowed: ['small'],
     pdf_upload: false,

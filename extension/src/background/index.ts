@@ -4,11 +4,6 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log('Smart Summify AI installed');
 });
 
-// Open side panel when action icon is clicked
-chrome.action.onClicked.addListener((tab) => {
-  chrome.sidePanel.open({ windowId: tab.windowId! });
-});
-
 // Helper to get page content from active tab
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'FETCH_PAGE_CONTENT') {

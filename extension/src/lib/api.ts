@@ -1,6 +1,6 @@
 import { getIdToken } from './firebase';
 
-const BASE_URL = 'https://your-backend.railway.app'; // ← update after deploy
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 async function request(path: string, options: RequestInit = {}) {
   const token = await getIdToken();
@@ -15,8 +15,18 @@ async function request(path: string, options: RequestInit = {}) {
     },
   });
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
+  let data: any = {};
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`HTTP ${res.status} — response was not JSON`);
+  }
+
+  if (!res.ok) {
+    const msg = data.error || data.message || data.detail || `HTTP ${res.status}`;
+    console.error(`[api] ${options.method || 'GET'} ${path} → ${res.status}`, data);
+    throw new Error(msg);
+  }
   return data;
 }
 
@@ -26,6 +36,22 @@ export const summarizeContent = (content: string, size: string, sourceUrl?: stri
     method: 'POST',
     body: JSON.stringify({ content, size, sourceUrl }),
   });
+
+// Guest summarize — no auth token, short summaries only, not saved to DB
+export const summarizeContentGuest = async (content: string, sourceUrl?: string) => {
+  const res = await fetch(`${BASE_URL}/v1/summarize/guest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, sourceUrl }),
+  });
+  let data: any = {};
+  try { data = await res.json(); } catch { throw new Error(`HTTP ${res.status} — response was not JSON`); }
+  if (!res.ok) {
+    console.error('[api] POST /v1/summarize/guest →', res.status, data);
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  return data;
+};
 
 export const summarizeFile = async (file: File, size: string) => {
   const token = await getIdToken();

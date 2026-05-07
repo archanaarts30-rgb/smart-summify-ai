@@ -87,4 +87,39 @@ async function summarize({ userId, content, size = 'medium', sourceUrl = null, f
   };
 }
 
-module.exports = { summarize };
+// ─── Guest summarize — same as above but skips DB entirely ──────────
+async function summarizeGuest({ content, sourceUrl = null }) {
+  const model = getModel();
+  const prompt = `${SIZE_PROMPTS.small}\n\n---\n\n${content}`;
+  const startMs = Date.now();
+
+  const result = await model.generateContent(prompt);
+  const summaryText = result.response.text();
+  const durationMs = Date.now() - startMs;
+
+  const originalWordCount = countWords(content);
+  const summaryWordCount = countWords(summaryText);
+  const inputTokens = result.response.usageMetadata?.promptTokenCount || 0;
+  const outputTokens = result.response.usageMetadata?.candidatesTokenCount || 0;
+  const originalReadSec = estimateReadSeconds(originalWordCount);
+  const summaryReadSec = estimateReadSeconds(summaryWordCount);
+  const timeSavedSec = Math.max(0, originalReadSec - summaryReadSec);
+
+  return {
+    summaryId: null,
+    summary: summaryText,
+    metrics: {
+      inputTokens,
+      outputTokens,
+      originalWordCount,
+      summaryWordCount,
+      compressionRatio: Math.round((1 - summaryWordCount / originalWordCount) * 100),
+      originalReadSec,
+      summaryReadSec,
+      timeSavedSec,
+      durationMs,
+    },
+  };
+}
+
+module.exports = { summarize, summarizeGuest };

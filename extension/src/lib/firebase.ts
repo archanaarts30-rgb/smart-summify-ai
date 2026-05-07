@@ -6,6 +6,7 @@ import {
   TwitterAuthProvider,
   OAuthProvider,
   FacebookAuthProvider,
+  signInWithCredential,
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -14,40 +15,64 @@ import {
   type User,
 } from 'firebase/auth';
 
-// ─── Paste your Firebase project config here ──────────────────────
 const firebaseConfig = {
-  apiKey: "AIzaSyDQ_BJ--LdctIGiHzuFYw9apYVx7rKn5d8",
-  authDomain: "smart-summify-ai.firebaseapp.com",
-  projectId: "smart-summify-ai",
-  storageBucket: "smart-summify-ai.firebasestorage.app",
-  messagingSenderId: "334071808161",
-  appId: "1:334071808161:web:00bac499ec847a70e830e0"
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 // ─── Providers ─────────────────────────────────────────────────────
-const googleProvider = new GoogleAuthProvider();
-const githubProvider = new GithubAuthProvider();
-const twitterProvider = new TwitterAuthProvider();
-const appleProvider = new OAuthProvider('apple.com');
+const googleProvider   = new GoogleAuthProvider();
+const githubProvider   = new GithubAuthProvider();
+const twitterProvider  = new TwitterAuthProvider();
+const appleProvider    = new OAuthProvider('apple.com');
 const facebookProvider = new FacebookAuthProvider();
-const yahooProvider = new OAuthProvider('yahoo.com');
+const yahooProvider    = new OAuthProvider('yahoo.com');
 
 export const socialLogin = async (provider: string) => {
-  const providerMap: Record<string, any> = {
-    google: googleProvider,
-    github: githubProvider,
-    twitter: twitterProvider,
-    apple: appleProvider,
-    facebook: facebookProvider,
-    yahoo: yahooProvider,
-  };
-  const p = providerMap[provider];
-  if (!p) throw new Error(`Unknown provider: ${provider}`);
-  const result = await signInWithPopup(auth, p);
-  return result.user;
+  // Chrome extensions (MV3) cannot load remote scripts like `https://apis.google.com/js/api.js`
+  // which Firebase Auth's Google popup flow depends on. For Google, use `chrome.identity`
+  // to obtain an OAuth access token, then sign into Firebase with a credential.
+  if (provider === 'google') {
+    const accessToken = await new Promise<string>((resolve, reject) => {
+      if (!chrome?.identity?.getAuthToken) {
+        reject(new Error('chrome.identity is unavailable. Add "identity" permission in manifest.json.'));
+        return;
+      }
+      chrome.identity.getAuthToken({ interactive: true }, (token) => {
+        const err = chrome.runtime.lastError;
+        if (err) {
+          reject(new Error(err.message || 'Failed to get Google auth token.'));
+          return;
+        }
+        if (!token) {
+          reject(new Error('No Google auth token returned.'));
+          return;
+        }
+        resolve(token);
+      });
+    });
+
+    const credential = GoogleAuthProvider.credential(null, accessToken);
+    const result = await signInWithCredential(auth, credential);
+    return result.user;
+  }
+
+  // Chrome MV3 extensions block all external script loads (CSP: script-src 'self').
+  // Firebase's signInWithPopup loads https://apis.google.com/js/api.js internally for
+  // ALL providers — not just Google — so it is blocked in the extension popup.
+  // Until a launchWebAuthFlow implementation is added for each provider,
+  // only Google (chrome.identity) and Email/Password work inside the extension.
+  throw new Error(
+    `${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-in is not supported directly in the extension.\n` +
+    `Please use Google or Email / Password instead.`
+  );
 };
 
 export const emailLogin = (email: string, password: string) =>

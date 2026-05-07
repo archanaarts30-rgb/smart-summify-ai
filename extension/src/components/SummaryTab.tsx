@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { useStore } from '../store';
-import { summarizeContent, summarizeFile } from '../lib/api';
+import { useStore, GUEST_FREE_LIMIT } from '../store';
+import { summarizeContent, summarizeContentGuest, summarizeFile } from '../lib/api';
 
 const SIZE_OPTIONS = [
   { id: 'small', label: 'Short', desc: '3–5 sentences' },
@@ -9,7 +9,10 @@ const SIZE_OPTIONS = [
 ] as const;
 
 export default function SummaryTab() {
-  const { user, summarySize, setSummarySize, currentSummary, setCurrentSummary, setAudioPlaying } = useStore();
+  const {
+    user, summarySize, setSummarySize, currentSummary, setCurrentSummary, setAudioPlaying,
+    guestSummaryCount, incrementGuestCount, setShowAuthModal,
+  } = useStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
@@ -17,16 +20,25 @@ export default function SummaryTab() {
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isGuest = !user;
   const plan = user?.plan || 'free';
   const allowedSizes = plan === 'free' ? ['small'] : ['small', 'medium', 'large'];
   const canUpload = plan !== 'free';
+  const guestLimitReached = isGuest && guestSummaryCount >= GUEST_FREE_LIMIT;
 
   const summarizePage = async () => {
+    if (guestLimitReached) { setShowAuthModal(true); return; }
     setError(''); setLoading(true);
     try {
       const response = await chrome.runtime.sendMessage({ type: 'FETCH_PAGE_CONTENT' });
       if (response?.error) throw new Error(response.error);
-      const result = await summarizeContent(response.content, summarySize, response.url);
+      let result;
+      if (isGuest) {
+        result = await summarizeContentGuest(response.content, response.url);
+        incrementGuestCount();
+      } else {
+        result = await summarizeContent(response.content, summarySize, response.url);
+      }
       setCurrentSummary(result);
     } catch (e: any) {
       setError(e.message || 'Summarization failed');
@@ -207,15 +219,47 @@ export default function SummaryTab() {
         </div>
       )}
 
-      {/* Upgrade prompt for free users */}
-      {plan === 'free' && (
+      {/* Guest usage counter */}
+      {isGuest && (
+        <div style={{
+          marginTop: 16, padding: '10px 14px', borderRadius: 10, fontSize: 12,
+          background: guestLimitReached ? '#fef2f2' : '#f5f3ff',
+          border: `1px solid ${guestLimitReached ? '#fecaca' : '#ddd6fe'}`,
+          color: guestLimitReached ? '#b91c1c' : '#5b21b6',
+        }}>
+          {guestLimitReached ? (
+            <>
+              <strong>You've used all {GUEST_FREE_LIMIT} free summaries.</strong>{' '}
+              <span
+                onClick={() => setShowAuthModal(true)}
+                style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Sign up free to continue →
+              </span>
+            </>
+          ) : (
+            <>
+              <strong>{GUEST_FREE_LIMIT - guestSummaryCount} free {GUEST_FREE_LIMIT - guestSummaryCount === 1 ? 'summary' : 'summaries'} left.</strong>{' '}
+              <span
+                onClick={() => setShowAuthModal(true)}
+                style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Sign up free for 5/day →
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Upgrade prompt for logged-in free users */}
+      {!isGuest && plan === 'free' && (
         <div style={{
           marginTop: 16, padding: '10px 14px', background: '#f5f3ff',
           border: '1px solid #ddd6fe', borderRadius: 10, fontSize: 12, color: '#5b21b6',
         }}>
           <strong>Free plan:</strong> 5 summaries/day, short size only.{' '}
           <span
-            onClick={() => chrome.tabs.create({ url: 'https://smartsummify.app/upgrade' })}
+            onClick={() => chrome.tabs.create({ url: import.meta.env.VITE_UPGRADE_URL })}
             style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
           >
             Upgrade for $4.99/mo →

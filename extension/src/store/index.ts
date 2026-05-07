@@ -25,11 +25,22 @@ export interface ChatMessage {
   content: string;
 }
 
+export const GUEST_FREE_LIMIT = 3;
+
 interface AppState {
   // Auth
   user: { id: string; email: string; displayName: string; plan: Plan } | null;
   setUser: (user: AppState['user']) => void;
   clearUser: () => void;
+
+  // Guest usage (unauthenticated free tier)
+  guestSummaryCount: number;
+  incrementGuestCount: () => void;
+  resetGuestCount: () => void;
+
+  // Auth modal (shown when guest hits limit or clicks Sign In)
+  showAuthModal: boolean;
+  setShowAuthModal: (show: boolean) => void;
 
   // UI preferences
   theme: Theme;
@@ -58,8 +69,15 @@ export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
       user: null,
-      setUser: (user) => set({ user }),
-      clearUser: () => set({ user: null, currentSummary: null, chatHistory: [] }),
+      setUser: (user) => set({ user, showAuthModal: false }),
+      clearUser: () => set({ user: null, currentSummary: null, chatHistory: [], guestSummaryCount: 0 }),
+
+      guestSummaryCount: 0,
+      incrementGuestCount: () => set((s) => ({ guestSummaryCount: s.guestSummaryCount + 1 })),
+      resetGuestCount: () => set({ guestSummaryCount: 0 }),
+
+      showAuthModal: false,
+      setShowAuthModal: (showAuthModal) => set({ showAuthModal }),
 
       theme: 'light',
       toggleTheme: () => set((s) => ({ theme: s.theme === 'light' ? 'dark' : 'light' })),
@@ -83,7 +101,13 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'smart-summify-store',
-      partialize: (s) => ({ theme: s.theme, fontSize: s.fontSize, summarySize: s.summarySize, user: s.user }),
+      partialize: (s) => ({
+        theme: s.theme,
+        fontSize: s.fontSize,
+        summarySize: s.summarySize,
+        user: s.user,
+        guestSummaryCount: s.guestSummaryCount,
+      }),
     }
   )
 );

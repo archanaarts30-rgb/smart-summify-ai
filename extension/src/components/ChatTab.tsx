@@ -39,7 +39,7 @@ export default function ChatTab() {
         <p style={{ fontSize: 13, marginBottom: 12 }}>Chat with content requires <strong>Basic</strong> or <strong>Premium</strong> plan.</p>
         <button
           className="btn"
-          onClick={() => chrome.tabs.create({ url: 'https://smartsummify.app/upgrade' })}
+          onClick={() => chrome.tabs.create({ url: import.meta.env.VITE_UPGRADE_URL })}
         >
           Upgrade to unlock
         </button>
