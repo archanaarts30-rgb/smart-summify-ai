@@ -51,10 +51,5 @@
       "resources": ["fonts/*", "icons/*", "assets/*"],
       "matches": ["<all_urls>"]
     }
-  ],
-
-  "oauth2": {
-    "client_id": "%VITE_GOOGLE_OAUTH_CLIENT_ID%",
-    "scopes": ["openid", "email", "profile"]
-  }
+  ]
 }
