@@ -67,7 +67,7 @@ if (process.env.NODE_ENV !== 'production') {
     const supabase = require('./config/supabase');
     const results = {};
 
-    // Show the configured URL (no key) so we can spot formatting issues
+    // Check URL format
     const rawUrl = process.env.SUPABASE_URL || '';
     results.supabase_url_check = {
       value: rawUrl,
@@ -75,6 +75,23 @@ if (process.env.NODE_ENV !== 'production') {
       has_extra_path: rawUrl.includes('/rest') || rawUrl.includes('/v1'),
       looks_correct: rawUrl.startsWith('https://') && !rawUrl.endsWith('/') && !rawUrl.includes('/rest'),
     };
+
+    // Check service role key format (decode JWT payload without a library)
+    const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    try {
+      const parts = rawKey.split('.');
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+      results.key_check = {
+        has_leading_space:  rawKey.startsWith(' ') || rawKey.startsWith('\n'),
+        has_trailing_space: rawKey.endsWith(' ')   || rawKey.endsWith('\n'),
+        part_count: parts.length,           // must be 3
+        role_in_jwt: payload.role,          // must be "service_role"
+        issuer: payload.iss,                // should be "supabase"
+        key_length: rawKey.length,
+      };
+    } catch {
+      results.key_check = { error: 'Could not decode JWT — key is malformed or truncated', key_length: rawKey.length };
+    }
 
     try {
       // 1 — Insert test user
