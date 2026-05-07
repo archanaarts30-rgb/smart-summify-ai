@@ -82,3 +82,24 @@ alter table public.chat_messages enable row level security;
 
 -- Service role bypasses all RLS — backend uses this key.
 -- Direct client access would need explicit policies.
+
+-- ─── Role grants ──────────────────────────────────────────────────
+-- Required: tables created via SQL editor do not get privileges
+-- automatically — these grants must be applied explicitly.
+
+grant usage on schema public to anon, authenticated, service_role;
+
+-- service_role: full access (backend uses this, bypasses RLS via PostgREST)
+grant all on table public.users         to service_role;
+grant all on table public.summaries     to service_role;
+grant all on table public.chat_messages to service_role;
+
+-- authenticated: full access for logged-in users (if you add client-side queries later)
+grant all on table public.users         to authenticated;
+grant all on table public.summaries     to authenticated;
+grant all on table public.chat_messages to authenticated;
+
+-- anon: no access (all reads/writes go through the authenticated backend)
+-- sequences
+grant usage, select on all sequences in schema public to service_role;
+grant usage, select on all sequences in schema public to authenticated;

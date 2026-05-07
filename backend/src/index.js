@@ -59,9 +59,7 @@ app.use('/v1/users', usersRouter);
 // ─── Health check ──────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));
 
-// ─── DB validation (development only) ─────────────────────────────
-// Inserts a test user + summary, verifies them, then deletes both.
-// Remove this endpoint before going to production.
+// ─── DB validation (development only — remove before Chrome Web Store submission) ──
 if (process.env.NODE_ENV !== 'production') {
   app.get('/health/db', async (_req, res) => {
     const supabase = require('./config/supabase');
