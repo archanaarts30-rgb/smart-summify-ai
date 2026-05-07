@@ -67,6 +67,15 @@ if (process.env.NODE_ENV !== 'production') {
     const supabase = require('./config/supabase');
     const results = {};
 
+    // Show the configured URL (no key) so we can spot formatting issues
+    const rawUrl = process.env.SUPABASE_URL || '';
+    results.supabase_url_check = {
+      value: rawUrl,
+      has_trailing_slash: rawUrl.endsWith('/'),
+      has_extra_path: rawUrl.includes('/rest') || rawUrl.includes('/v1'),
+      looks_correct: rawUrl.startsWith('https://') && !rawUrl.endsWith('/') && !rawUrl.includes('/rest'),
+    };
+
     try {
       // 1 — Insert test user
       const testUid = `test-uid-${Date.now()}`;
