@@ -65,16 +65,20 @@ async function authenticate(req, res, next) {
         .insert({
           firebase_uid: decoded.uid,
           email: decoded.email,
-          display_name: decoded.name || decoded.email.split('@')[0],
+          display_name: decoded.name || decoded.email?.split('@')[0] || 'User',
           plan: 'free',
         })
         .select()
         .single();
 
-      if (insertError) return res.status(500).json({ error: 'Failed to create user record' });
+      if (insertError) {
+        console.error('[auth] Failed to create user record:', insertError);
+        return res.status(500).json({ error: 'Failed to create user record', detail: insertError.message });
+      }
       user = newUser;
     } else if (error) {
-      return res.status(500).json({ error: 'Database error' });
+      console.error('[auth] Supabase user lookup error:', error);
+      return res.status(500).json({ error: 'Database error', detail: error.message, code: error.code });
     }
 
     req.user = user;
