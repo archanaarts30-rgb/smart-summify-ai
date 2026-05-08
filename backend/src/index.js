@@ -59,6 +59,57 @@ app.use('/v1/users', usersRouter);
 // ─── Health check ──────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));
 
+// ─── Stripe payment result pages ───────────────────────────────────
+// These are opened in a browser tab after Stripe Checkout completes.
+// The user closes the tab and returns to the extension.
+app.get('/payment/success', (_req, res) => {
+  res.send(`<!DOCTYPE html><html><head><meta charset="utf-8">
+  <title>Payment successful — Smart Summify AI</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           display: flex; align-items: center; justify-content: center;
+           min-height: 100vh; margin: 0; background: #f0fdf4; }
+    .card { text-align: center; padding: 48px 40px; background: #fff;
+            border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-width: 400px; }
+    .icon { font-size: 52px; margin-bottom: 16px; }
+    h1 { font-size: 22px; color: #15803d; margin: 0 0 10px; }
+    p  { color: #6b7280; font-size: 15px; line-height: 1.6; margin: 0 0 24px; }
+    button { background: #16a34a; color: #fff; border: none; padding: 12px 28px;
+             border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  </style></head><body>
+  <div class="card">
+    <div class="icon">✅</div>
+    <h1>Payment successful!</h1>
+    <p>Your plan has been upgraded. Open the Smart Summify AI extension to start using your new features.</p>
+    <button onclick="window.close()">Close this tab</button>
+  </div>
+  </body></html>`);
+});
+
+app.get('/payment/cancel', (_req, res) => {
+  res.send(`<!DOCTYPE html><html><head><meta charset="utf-8">
+  <title>Payment cancelled — Smart Summify AI</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           display: flex; align-items: center; justify-content: center;
+           min-height: 100vh; margin: 0; background: #fafafa; }
+    .card { text-align: center; padding: 48px 40px; background: #fff;
+            border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-width: 400px; }
+    .icon { font-size: 52px; margin-bottom: 16px; }
+    h1 { font-size: 22px; color: #374151; margin: 0 0 10px; }
+    p  { color: #6b7280; font-size: 15px; line-height: 1.6; margin: 0 0 24px; }
+    button { background: #6366f1; color: #fff; border: none; padding: 12px 28px;
+             border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  </style></head><body>
+  <div class="card">
+    <div class="icon">↩</div>
+    <h1>Payment cancelled</h1>
+    <p>No charges were made. You can upgrade anytime from the Smart Summify AI extension.</p>
+    <button onclick="window.close()">Close this tab</button>
+  </div>
+  </body></html>`);
+});
+
 // ─── DB validation (development only — remove before Chrome Web Store submission) ──
 if (process.env.NODE_ENV !== 'production') {
   app.get('/health/db', async (_req, res) => {

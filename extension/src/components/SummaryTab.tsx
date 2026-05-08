@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useStore, GUEST_FREE_LIMIT } from '../store';
-import { summarizeContent, summarizeContentGuest, summarizeFile } from '../lib/api';
+import { summarizeContent, summarizeContentGuest, summarizeFile, subscribe } from '../lib/api';
 
 const SIZE_OPTIONS = [
   { id: 'small', label: 'Short', desc: '3–5 sentences' },
@@ -94,6 +94,15 @@ export default function SummaryTab() {
     window.speechSynthesis.cancel();
     setAudioState('idle');
     setAudioPlaying(false);
+  };
+
+  const handleUpgrade = async () => {
+    try {
+      const { checkoutUrl } = await subscribe('basic');
+      if (checkoutUrl) chrome.tabs.create({ url: checkoutUrl });
+    } catch (e: any) {
+      setError(e.message || 'Could not start checkout. Please try again.');
+    }
   };
 
   const fmtSeconds = (s: number) => s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;
@@ -244,7 +253,7 @@ export default function SummaryTab() {
                 onClick={() => setShowAuthModal(true)}
                 style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
               >
-                Sign up free for 5/day →
+                Sign up free for 3/day →
               </span>
             </>
           )}
@@ -257,9 +266,9 @@ export default function SummaryTab() {
           marginTop: 16, padding: '10px 14px', background: '#f5f3ff',
           border: '1px solid #ddd6fe', borderRadius: 10, fontSize: 12, color: '#5b21b6',
         }}>
-          <strong>Free plan:</strong> 5 summaries/day, short size only.{' '}
+          <strong>Free plan:</strong> 3 summaries/day, short size only.{' '}
           <span
-            onClick={() => chrome.tabs.create({ url: import.meta.env.VITE_UPGRADE_URL })}
+            onClick={handleUpgrade}
             style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
           >
             Upgrade for $4.99/mo →

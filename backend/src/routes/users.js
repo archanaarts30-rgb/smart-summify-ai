@@ -76,13 +76,15 @@ router.post('/subscribe', authenticate, async (req, res) => {
       await supabase.from('users').update({ stripe_customer_id: customerId }).eq('id', req.user.id);
     }
 
+    const backendUrl = process.env.BACKEND_URL || `https://smart-summify-ai-development.up.railway.app`;
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
-      success_url: `${process.env.FRONTEND_ORIGIN}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.FRONTEND_ORIGIN}/cancel`,
+      success_url: `${backendUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url:  `${backendUrl}/payment/cancel`,
     });
 
     res.json({ checkoutUrl: session.url });
