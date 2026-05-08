@@ -58,11 +58,21 @@ router.patch('/me', authenticate, async (req, res) => {
 // ─── Create Stripe Checkout session ────────────────────────────────
 router.post('/subscribe', authenticate, async (req, res) => {
   const { plan } = req.body;
+
+  // Guard: Stripe must be configured
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return res.status(503).json({ error: 'Payments are not configured yet. Please contact support.' });
+  }
+
   const priceId = plan === 'premium'
     ? process.env.STRIPE_PREMIUM_PRICE_ID
     : process.env.STRIPE_BASIC_PRICE_ID;
 
-  if (!priceId) return res.status(400).json({ error: 'Invalid plan.' });
+  if (!priceId) {
+    const missing = plan === 'premium' ? 'STRIPE_PREMIUM_PRICE_ID' : 'STRIPE_BASIC_PRICE_ID';
+    console.error(`[subscribe] Missing env var: ${missing}`);
+    return res.status(503).json({ error: 'This plan is not available yet. Please contact support.' });
+  }
 
   try {
     let customerId = req.user.stripe_customer_id;
@@ -76,8 +86,7 @@ router.post('/subscribe', authenticate, async (req, res) => {
       await supabase.from('users').update({ stripe_customer_id: customerId }).eq('id', req.user.id);
     }
 
-    // Resolve own public URL: prefer explicit override, then Railway's auto-injected
-    // RAILWAY_PUBLIC_DOMAIN, then fall back to the dev Railway service URL.
+    // Resolve own public URL: Railway injects RAILWAY_PUBLIC_DOMAIN automatically.
     const backendUrl = process.env.BACKEND_URL
       || (process.env.RAILWAY_PUBLIC_DOMAIN
             ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
@@ -95,8 +104,10 @@ router.post('/subscribe', authenticate, async (req, res) => {
 
     res.json({ checkoutUrl: session.url });
   } catch (err) {
-    console.error('Stripe checkout error:', err);
-    res.status(500).json({ error: 'Could not create checkout session.' });
+    // Surface the real Stripe error message to make debugging easier
+    const stripeMsg = err?.raw?.message || err?.message || 'Unknown error';
+    console.error('[subscribe] Stripe error:', stripeMsg, err);
+    res.status(500).json({ error: `Stripe: ${stripeMsg}` });
   }
 });
 
