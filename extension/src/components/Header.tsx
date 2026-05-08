@@ -7,7 +7,7 @@ interface HeaderProps {
 }
 
 export default function Header({ onSignInClick, onAvatarClick }: HeaderProps) {
-  const { user, theme, toggleTheme, fontSize, increaseFontSize, decreaseFontSize } = useStore();
+  const { user, theme, toggleTheme, usage } = useStore();
 
   const planColors: Record<string, string> = {
     free: '#71717a',
@@ -71,16 +71,27 @@ export default function Header({ onSignInClick, onAvatarClick }: HeaderProps) {
             >
               {user.plan}
             </button>
+
+            {/* Usage stats — today count */}
+            {usage && (
+              <span style={{
+                fontSize: 10, color: 'var(--text2)', fontWeight: 500,
+                borderLeft: '1px solid var(--border)', paddingLeft: 7,
+              }}>
+                {usage.dailyLimit === null
+                  ? <><strong style={{ color: 'var(--text)' }}>{usage.summariesToday}</strong> today</>
+                  : <><strong style={{ color: usage.summariesToday >= usage.dailyLimit ? '#dc2626' : 'var(--text)' }}>
+                      {usage.summariesToday}/{usage.dailyLimit}
+                    </strong> today</>
+                }
+              </span>
+            )}
           </>
         )}
       </div>
 
       {/* Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {/* Font size */}
-        <button onClick={decreaseFontSize} title="Decrease font" style={iconBtn}>A-</button>
-        <button onClick={increaseFontSize} title="Increase font" style={iconBtn}>A+</button>
-
         {/* Dark mode toggle */}
         <button onClick={toggleTheme} title="Toggle theme" style={iconBtn}>
           {theme === 'dark' ? '☀' : '◑'}

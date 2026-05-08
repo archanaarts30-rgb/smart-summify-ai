@@ -31,9 +31,29 @@ const Icons = {
   Trash:     () => <Ico d={["M3 6h18","M8 6V4h8v2","M19 6l-1 14H6L5 6"]} />,
 };
 
-// ─── Tiny inline markdown → HTML converter ───────────────────────────────────
+// ─── Inline markdown → HTML converter (with inline styles for reliability) ───
 function mdToHtml(md: string): string {
   if (!md) return '';
+
+  const S = {
+    h1: 'font-size:1.15em;font-weight:700;margin:0 0 8px;color:inherit;',
+    h2: 'font-size:1.05em;font-weight:700;margin:10px 0 5px;border-bottom:1px solid rgba(128,128,128,0.25);padding-bottom:3px;color:inherit;',
+    h3: 'font-size:0.97em;font-weight:700;margin:8px 0 4px;color:inherit;',
+    h4: 'font-size:0.92em;font-weight:600;margin:6px 0 3px;opacity:0.8;',
+    p:  'margin:0 0 7px;line-height:1.65;',
+    ul: 'margin:4px 0 8px;padding-left:18px;',
+    ol: 'margin:4px 0 8px;padding-left:18px;',
+    li: 'margin-bottom:4px;line-height:1.6;',
+    code: 'font-family:monospace;font-size:0.88em;padding:1px 4px;border-radius:3px;background:rgba(128,128,128,0.15);',
+  };
+
+  const inlineFmt = (s: string) =>
+    s
+      .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/(?<!\*)\*(?!\*)([^*]+)\*(?!\*)/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, `<code style="${S.code}">$1</code>`);
+
   const lines = md.split('\n');
   const out: string[] = [];
   let inUL = false, inOL = false;
@@ -43,40 +63,33 @@ function mdToHtml(md: string): string {
     if (inOL) { out.push('</ol>'); inOL = false; }
   };
 
-  const inlineFormat = (s: string) =>
-    s
-      .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/`(.+?)`/g, '<code>$1</code>');
-
   for (const raw of lines) {
-    const line = raw.trimEnd();
+    const line = raw.replace(/\r$/, '').trimEnd();
 
-    if (/^#{4,}\s/.test(line)) {
+    if (/^#{4,}\s+/.test(line)) {
       closeList();
-      out.push(`<h4>${inlineFormat(line.replace(/^#{4,}\s/, ''))}</h4>`);
-    } else if (/^###\s/.test(line)) {
+      out.push(`<h4 style="${S.h4}">${inlineFmt(line.replace(/^#{4,}\s+/, ''))}</h4>`);
+    } else if (/^###\s+/.test(line)) {
       closeList();
-      out.push(`<h3>${inlineFormat(line.replace(/^###\s/, ''))}</h3>`);
-    } else if (/^##\s/.test(line)) {
+      out.push(`<h3 style="${S.h3}">${inlineFmt(line.replace(/^###\s+/, ''))}</h3>`);
+    } else if (/^##\s+/.test(line)) {
       closeList();
-      out.push(`<h2>${inlineFormat(line.replace(/^##\s/, ''))}</h2>`);
-    } else if (/^#\s/.test(line)) {
+      out.push(`<h2 style="${S.h2}">${inlineFmt(line.replace(/^##\s+/, ''))}</h2>`);
+    } else if (/^#\s+/.test(line)) {
       closeList();
-      out.push(`<h1>${inlineFormat(line.replace(/^#\s/, ''))}</h1>`);
-    } else if (/^\d+\.\s/.test(line)) {
-      if (!inOL) { if (inUL) { out.push('</ul>'); inUL = false; } out.push('<ol>'); inOL = true; }
-      out.push(`<li>${inlineFormat(line.replace(/^\d+\.\s/, ''))}</li>`);
-    } else if (/^[-*+]\s/.test(line)) {
-      if (!inUL) { if (inOL) { out.push('</ol>'); inOL = false; } out.push('<ul>'); inUL = true; }
-      out.push(`<li>${inlineFormat(line.replace(/^[-*+]\s/, ''))}</li>`);
+      out.push(`<h1 style="${S.h1}">${inlineFmt(line.replace(/^#\s+/, ''))}</h1>`);
+    } else if (/^\d+\.\s+/.test(line)) {
+      if (!inOL) { closeList(); out.push(`<ol style="${S.ol}">`); inOL = true; }
+      out.push(`<li style="${S.li}">${inlineFmt(line.replace(/^\d+\.\s+/, ''))}</li>`);
+    } else if (/^[-*+•·]\s+/.test(line)) {
+      if (!inUL) { closeList(); out.push(`<ul style="${S.ul}">`); inUL = true; }
+      out.push(`<li style="${S.li}">${inlineFmt(line.replace(/^[-*+•·]\s+/, ''))}</li>`);
     } else if (line === '') {
       closeList();
-      out.push('<br>');
+      out.push('<div style="height:4px"></div>');
     } else {
       closeList();
-      out.push(`<p>${inlineFormat(line)}</p>`);
+      out.push(`<p style="${S.p}">${inlineFmt(line)}</p>`);
     }
   }
   closeList();
@@ -388,31 +401,30 @@ export default function SummaryTab() {
         </div>
 
         {/* Language picker */}
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 4,
-            padding: '6px 10px',
-            background: 'var(--bg2)', border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-lg)', cursor: 'pointer',
-          }}>
-            <span style={{ color: 'var(--text2)', display: 'flex', alignItems: 'center' }}>
-              <Icons.Globe />
-            </span>
-            <select
-              value={targetLanguage}
-              onChange={e => setTargetLanguage(e.target.value)}
-              style={{
-                background: 'transparent', border: 'none', outline: 'none',
-                color: 'var(--text)', fontSize: 11, fontWeight: 500,
-                cursor: 'pointer', appearance: 'none', paddingRight: 2,
-                maxWidth: 80,
-              }}
-            >
-              {LANGUAGES.map(l => (
-                <option key={l.value} value={l.value}>{l.label}</option>
-              ))}
-            </select>
-          </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+          padding: '5px 8px',
+          background: 'var(--bg2)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+        }}>
+          <span style={{ color: 'var(--text2)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <Icons.Globe />
+          </span>
+          <select
+            value={targetLanguage}
+            onChange={e => setTargetLanguage(e.target.value)}
+            style={{
+              background: 'var(--bg2)', border: 'none', outline: 'none',
+              color: 'var(--text)', fontSize: 11, fontWeight: 500,
+              cursor: 'pointer', maxWidth: 100,
+            }}
+          >
+            {LANGUAGES.map(l => (
+              <option key={l.value} value={l.value} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {l.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -691,15 +703,18 @@ export default function SummaryTab() {
             padding: '6px 10px', marginBottom: 6,
             background: 'var(--bg2)', borderRadius: 'var(--radius)',
             border: '1px solid var(--border)',
+            color: 'var(--text)',
           }}>
             {/* Font size group */}
             <button onClick={decreaseFontSize}
-              className="btn-ghost" style={icoBtnStyle} title="Decrease font size">
-              <Icons.FontMinus />
+              className="btn-ghost" title="Decrease font size"
+              style={{ ...icoBtnStyle, fontSize: 13, fontWeight: 800, letterSpacing: '-0.5px', minWidth: 30, color: 'var(--text)' }}>
+              A<span style={{ fontSize: 10, verticalAlign: 'middle', marginLeft: 1 }}>−</span>
             </button>
             <button onClick={increaseFontSize}
-              className="btn-ghost" style={icoBtnStyle} title="Increase font size">
-              <Icons.FontPlus />
+              className="btn-ghost" title="Increase font size"
+              style={{ ...icoBtnStyle, fontSize: 13, fontWeight: 800, letterSpacing: '-0.5px', minWidth: 30, color: 'var(--text)' }}>
+              A<span style={{ fontSize: 11, verticalAlign: 'middle', marginLeft: 1 }}>+</span>
             </button>
 
             {/* Divider */}
@@ -707,7 +722,7 @@ export default function SummaryTab() {
 
             {/* Copy */}
             <button onClick={handleCopy}
-              className="btn-ghost" style={{ ...icoBtnStyle, color: copied ? 'var(--success)' : 'inherit' }}
+              className="btn-ghost" style={{ ...icoBtnStyle, color: copied ? 'var(--success)' : 'var(--text)' }}
               title={copied ? 'Copied!' : 'Copy to clipboard'}>
               {copied ? <Icons.Check /> : <Icons.Copy />}
             </button>
@@ -715,7 +730,7 @@ export default function SummaryTab() {
             {/* Audio */}
             <button onClick={handleAudio}
               className="btn-ghost"
-              style={{ ...icoBtnStyle, color: audioState !== 'idle' ? 'var(--accent)' : 'inherit' }}
+              style={{ ...icoBtnStyle, color: audioState !== 'idle' ? 'var(--accent)' : 'var(--text)' }}
               title={audioState === 'playing' ? 'Pause audio' : audioState === 'paused' ? 'Resume audio' : 'Listen to summary'}>
               {audioState === 'playing' ? <Icons.Pause /> : <Icons.Play />}
             </button>
@@ -735,7 +750,7 @@ export default function SummaryTab() {
                 disabled={!!exportLoading}
                 className="btn-ghost"
                 title={canExport ? 'Download/Export' : 'Requires Basic plan'}
-                style={{ ...icoBtnStyle, opacity: canExport ? 1 : 0.45 }}>
+                style={{ ...icoBtnStyle, color: 'var(--text)', opacity: canExport ? 1 : 0.45 }}>
                 {exportLoading ? <span style={{ fontSize: 11 }}>...</span> : <Icons.Download />}
               </button>
               {showExportMenu && (
@@ -760,14 +775,6 @@ export default function SummaryTab() {
               )}
             </div>
 
-            {/* Chat toggle */}
-            <button onClick={() => canChat ? setShowChat(v => !v) : null}
-              className="btn-ghost"
-              title={canChat ? 'Chat about this content' : 'Chat requires Basic plan'}
-              style={{ ...icoBtnStyle, color: showChat ? 'var(--accent)' : 'inherit', opacity: canChat ? 1 : 0.45, cursor: canChat ? 'pointer' : 'not-allowed', marginLeft: 2 }}>
-              <Icons.Chat />
-            </button>
-
             {/* Spacer + Clear */}
             <button onClick={handleClear}
               className="btn-ghost"
@@ -790,6 +797,39 @@ export default function SummaryTab() {
               marginBottom: 10, maxHeight: 280, overflowY: 'auto',
             }}
           />
+
+          {/* ── Chat button — below summary box ── */}
+          <div style={{ marginBottom: 8 }}>
+            {canChat ? (
+              <button
+                onClick={() => setShowChat(v => !v)}
+                className="btn-ghost"
+                style={{
+                  width: '100%', padding: '8px 14px', fontSize: 13, fontWeight: 600,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  color: showChat ? 'var(--accent)' : 'var(--text)',
+                  borderColor: showChat ? 'var(--accent)' : 'var(--border)',
+                  background: showChat ? 'rgba(109,74,247,0.07)' : 'transparent',
+                }}
+              >
+                <Icons.Chat />
+                {showChat ? 'Close Chat' : '💬 Ask AI about this'}
+              </button>
+            ) : (
+              <button
+                className="btn-ghost"
+                onClick={handleUpgrade}
+                style={{
+                  width: '100%', padding: '8px 14px', fontSize: 13, fontWeight: 600,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  color: 'var(--text2)', opacity: 0.7,
+                }}
+              >
+                <Icons.Chat />
+                💬 Ask AI about this — <span style={{ color: '#d97706' }}>Upgrade to Basic</span>
+              </button>
+            )}
+          </div>
 
           {/* ── Usage bar (after summary, logged-in) ── */}
           {!isGuest && usage && (
