@@ -31,18 +31,18 @@ async function request(path: string, options: RequestInit = {}) {
 }
 
 // ─── Summarize ─────────────────────────────────────────────────────
-export const summarizeContent = (content: string, size: string, sourceUrl?: string) =>
+export const summarizeContent = (content: string, size: string, sourceUrl?: string, targetLanguage?: string) =>
   request('/v1/summarize', {
     method: 'POST',
-    body: JSON.stringify({ content, size, sourceUrl }),
+    body: JSON.stringify({ content, size, sourceUrl, targetLanguage }),
   });
 
 // Guest summarize — no auth token, short summaries only, not saved to DB
-export const summarizeContentGuest = async (content: string, sourceUrl?: string) => {
+export const summarizeContentGuest = async (content: string, sourceUrl?: string, targetLanguage?: string) => {
   const res = await fetch(`${BASE_URL}/v1/summarize/guest`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content, sourceUrl }),
+    body: JSON.stringify({ content, sourceUrl, targetLanguage }),
   });
   let data: any = {};
   try { data = await res.json(); } catch { throw new Error(`HTTP ${res.status} — response was not JSON`); }
@@ -53,11 +53,12 @@ export const summarizeContentGuest = async (content: string, sourceUrl?: string)
   return data;
 };
 
-export const summarizeFile = async (file: File, size: string) => {
+export const summarizeFile = async (file: File, size: string, targetLanguage?: string) => {
   const token = await getIdToken();
   const form = new FormData();
   form.append('file', file);
   form.append('size', size);
+  if (targetLanguage) form.append('targetLanguage', targetLanguage);
   const res = await fetch(`${BASE_URL}/v1/summarize/file`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },

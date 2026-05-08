@@ -5,19 +5,25 @@ const supabase = require('../config/supabase');
 const WORDS_PER_MINUTE = 238;
 
 const SIZE_PROMPTS = {
-  small: `Summarize the following content in 3–5 concise sentences. 
-Capture only the most essential points. 
-Respond in the same language as the input text.`,
+  small: `Summarize the following content in 3–5 concise sentences.
+Capture only the most essential points.
+Use markdown: bold key terms with **text**, use bullet points (- item) where helpful.`,
 
-  medium: `Summarize the following content in 2–3 short paragraphs. 
-Cover the main ideas, key supporting points, and any important conclusions. 
-Use clear, simple language. Respond in the same language as the input text.`,
+  medium: `Summarize the following content in 2–3 short paragraphs.
+Cover the main ideas, key supporting points, and any important conclusions.
+Use markdown: use ## for section headings, **bold** for key terms, and bullet lists (- item) where appropriate.`,
 
-  large: `Provide a comprehensive summary of the following content. 
-Include the main thesis, all major points, supporting evidence, and conclusions. 
-Structure it with a brief intro, key sections, and a conclusion. 
-Respond in the same language as the input text.`,
+  large: `Provide a comprehensive summary of the following content.
+Include the main thesis, all major points, supporting evidence, and conclusions.
+Use markdown formatting: ## headings for sections, **bold** for key terms, - bullet points for lists, and paragraph breaks between sections.`,
 };
+
+function getLanguageInstruction(targetLanguage) {
+  if (!targetLanguage || targetLanguage === 'auto') {
+    return 'Respond in the same language as the input text.';
+  }
+  return `Your entire response must be written in ${targetLanguage}. Translate the content if necessary.`;
+}
 
 function countWords(text) {
   return text.trim().split(/\s+/).filter(Boolean).length;
@@ -27,9 +33,9 @@ function estimateReadSeconds(wordCount) {
   return Math.round((wordCount / WORDS_PER_MINUTE) * 60);
 }
 
-async function summarize({ userId, content, size = 'medium', sourceUrl = null, fileName = null }) {
+async function summarize({ userId, content, size = 'medium', sourceUrl = null, fileName = null, targetLanguage = 'auto' }) {
   const model = getModel();
-  const prompt = `${SIZE_PROMPTS[size]}\n\n---\n\n${content}`;
+  const prompt = `${SIZE_PROMPTS[size]}\n${getLanguageInstruction(targetLanguage)}\n\n---\n\n${content}`;
 
   const startMs = Date.now();
 
@@ -88,9 +94,9 @@ async function summarize({ userId, content, size = 'medium', sourceUrl = null, f
 }
 
 // ─── Guest summarize — same as above but skips DB entirely ──────────
-async function summarizeGuest({ content, sourceUrl = null }) {
+async function summarizeGuest({ content, sourceUrl = null, targetLanguage = 'auto' }) {
   const model = getModel();
-  const prompt = `${SIZE_PROMPTS.small}\n\n---\n\n${content}`;
+  const prompt = `${SIZE_PROMPTS.small}\n${getLanguageInstruction(targetLanguage)}\n\n---\n\n${content}`;
   const startMs = Date.now();
 
   const result = await model.generateContent(prompt);

@@ -24,7 +24,7 @@ const guestRateLimit = rateLimit({
 // ─── Guest summarize (no auth — short summaries only, not logged to DB) ────
 router.post('/guest', guestRateLimit, async (req, res) => {
   try {
-    const { content, sourceUrl } = req.body;
+    const { content, sourceUrl, targetLanguage } = req.body;
 
     if (!content || content.trim().length < 50) {
       return res.status(400).json({ error: 'Content too short to summarize (min 50 characters).' });
@@ -33,6 +33,7 @@ router.post('/guest', guestRateLimit, async (req, res) => {
     const result = await summarizeGuest({
       content: content.trim(),
       sourceUrl: sourceUrl || null,
+      targetLanguage: targetLanguage || 'auto',
     });
 
     res.json(result);
@@ -45,7 +46,7 @@ router.post('/guest', guestRateLimit, async (req, res) => {
 
 router.post('/', authenticate, checkSummaryQuota, async (req, res) => {
   try {
-    const { content, sourceUrl, size = 'medium' } = req.body;
+    const { content, sourceUrl, size = 'medium', targetLanguage } = req.body;
     const limits = req.planLimits;
 
     // ─── Validate size is allowed on this plan ─────────────
@@ -66,6 +67,7 @@ router.post('/', authenticate, checkSummaryQuota, async (req, res) => {
       content: content.trim(),
       size,
       sourceUrl: sourceUrl || null,
+      targetLanguage: targetLanguage || 'auto',
     });
 
     res.json(result);
@@ -105,7 +107,7 @@ router.post('/file', authenticate, checkSummaryQuota, upload.single('file'), asy
       });
     }
 
-    const { size = 'medium' } = req.body;
+    const { size = 'medium', targetLanguage } = req.body;
 
     if (!limits.sizes_allowed.includes(size)) {
       return res.status(403).json({
@@ -125,6 +127,7 @@ router.post('/file', authenticate, checkSummaryQuota, upload.single('file'), asy
       content,
       size,
       fileName: req.file.originalname,
+      targetLanguage: targetLanguage || 'auto',
     });
 
     res.json(result);
