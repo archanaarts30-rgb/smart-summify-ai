@@ -13,6 +13,10 @@
   --accent-hover: #5a38e0;
   --success: #16a34a;
   --danger: #dc2626;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
 }
 
 [data-theme="dark"] {
@@ -39,31 +43,50 @@ body {
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-full); }
 
+/* ── Buttons ─────────────────────────────────────────────────── */
 .btn {
-  @apply px-4 py-2 rounded-lg font-medium text-sm transition-all cursor-pointer;
+  @apply px-4 py-2 font-medium text-sm transition-all cursor-pointer;
   background: var(--accent);
   color: white;
   border: none;
+  border-radius: var(--radius);
 }
-.btn:hover { background: var(--accent-hover); }
+.btn:hover  { background: var(--accent-hover); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-ghost {
-  @apply px-3 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer;
+  @apply px-3 py-1.5 text-sm font-medium transition-all cursor-pointer;
   background: transparent;
   color: var(--text2);
   border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 .btn-ghost:hover { background: var(--bg2); color: var(--text); }
 
+.btn-sm {
+  @apply px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Cards ───────────────────────────────────────────────────── */
 .card {
   background: var(--bg2);
   border: 1px solid var(--border);
-  @apply rounded-xl p-4;
+  border-radius: var(--radius-lg);
+  padding: 16px;
 }
 
+/* ── Inputs ──────────────────────────────────────────────────── */
+input, textarea, select {
+  border-radius: var(--radius) !important;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────── */
 .tab-active {
   border-bottom: 2px solid var(--accent);
   color: var(--accent);

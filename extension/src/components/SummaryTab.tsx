@@ -15,6 +15,8 @@ const THEME_COLORS: Record<string, string> = {
   blue: '#3b82f6', purple: '#8b5cf6', teal: '#14b8a6', coral: '#f97316', amber: '#f59e0b',
 };
 
+type SourceMode = 'page' | 'document';
+
 export default function SummaryTab() {
   const {
     user, summarySize, setSummarySize, currentSummary, setCurrentSummary, setAudioPlaying,
@@ -22,6 +24,10 @@ export default function SummaryTab() {
     chatHistory, addChatMessage, clearChat,
     usage, setUsage,
   } = useStore();
+
+  // ── Source mode ──────────────────────────────────────────────────
+  const [sourceMode, setSourceMode] = useState<SourceMode>('page');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // ── Summarize state ──────────────────────────────────────────────
   const [loading,   setLoading]   = useState(false);
@@ -83,7 +89,7 @@ export default function SummaryTab() {
     if (showChat) chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory, showChat]);
 
-  // Reset per-summary state when summary changes
+  // Reset per-summary UI state when summary changes
   useEffect(() => {
     setShowExportMenu(false);
     setShowSocialPanel(false);
@@ -91,9 +97,10 @@ export default function SummaryTab() {
     setShowChat(false);
     setChatError('');
     setSlidesError('');
+    setExportError('');
   }, [currentSummary?.summaryId]);
 
-  // ── Summarize actions ────────────────────────────────────────────
+  // ── Summarize page ───────────────────────────────────────────────
   const summarizePage = async () => {
     if (guestLimitReached) { setShowAuthModal(true); return; }
     setError(''); setLoading(true);
@@ -106,15 +113,7 @@ export default function SummaryTab() {
         incrementGuestCount();
       } else {
         result = await summarizeContent(response.content, summarySize, response.url);
-        // Optimistically bump local usage counters so the bar updates instantly
-        if (usage) {
-          setUsage({
-            ...usage,
-            summariesToday:     usage.summariesToday + 1,
-            summariesThisMonth: usage.summariesThisMonth + 1,
-            totalSummaries:     usage.totalSummaries + 1,
-          });
-        }
+        if (usage) setUsage({ ...usage, summariesToday: usage.summariesToday + 1, summariesThisMonth: usage.summariesThisMonth + 1, totalSummaries: usage.totalSummaries + 1 });
       }
       setCurrentSummary(result);
     } catch (e: any) {
@@ -124,20 +123,28 @@ export default function SummaryTab() {
     }
   };
 
-  const summarizeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // ── Summarize uploaded doc ───────────────────────────────────────
+  const summarizeDocument = async () => {
+    if (!selectedFile) return;
     setError(''); setLoading(true);
     try {
-      const result = await summarizeFile(file, summarySize);
+      const result = await summarizeFile(selectedFile, summarySize);
+      if (usage) setUsage({ ...usage, summariesToday: usage.summariesToday + 1, summariesThisMonth: usage.summariesThisMonth + 1, totalSummaries: usage.totalSummaries + 1 });
       setCurrentSummary(result);
     } catch (e: any) {
-      setError(e.message || 'File summarization failed');
+      setError(e.message || 'Document summarization failed');
     } finally {
       setLoading(false);
-      e.target.value = '';
     }
   };
+
+  const onFileChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) { setSelectedFile(file); setError(''); }
+    e.target.value = '';
+  };
+
+  const removeFile = () => { setSelectedFile(null); setError(''); };
 
   // ── Copy / Audio ─────────────────────────────────────────────────
   const handleCopy = () => {
@@ -241,8 +248,35 @@ export default function SummaryTab() {
 
   const fmtSeconds = (s: number) => s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;
 
+  // ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ padding: 16 }}>
+    <div style={{ padding: 14 }}>
+
+      {/* ── Source mode toggle ── */}
+      {!currentSummary && (
+        <div style={{
+          display: 'flex', gap: 4, padding: 4, marginBottom: 14,
+          background: 'var(--bg2)', borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--border)',
+        }}>
+          {(['page', 'document'] as SourceMode[]).map(mode => (
+            <button
+              key={mode}
+              onClick={() => { setSourceMode(mode); setError(''); }}
+              style={{
+                flex: 1, padding: '8px 6px', fontSize: 13, fontWeight: 600,
+                borderRadius: 'var(--radius)',
+                border: 'none',
+                background: sourceMode === mode ? 'var(--accent)' : 'transparent',
+                color: sourceMode === mode ? '#fff' : 'var(--text2)',
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}
+            >
+              {mode === 'page' ? '🌐 This Page' : '📄 Document'}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Size picker ── */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
@@ -254,7 +288,7 @@ export default function SummaryTab() {
               onClick={() => !locked && setSummarySize(s.id)}
               title={locked ? 'Upgrade to unlock' : s.desc}
               style={{
-                flex: 1, padding: '7px 4px', borderRadius: 8, fontSize: 12, fontWeight: 500,
+                flex: 1, padding: '7px 4px', borderRadius: 'var(--radius)', fontSize: 12, fontWeight: 500,
                 background: summarySize === s.id ? 'var(--accent)' : 'var(--bg2)',
                 color: summarySize === s.id ? '#fff' : locked ? 'var(--text2)' : 'var(--text)',
                 border: '1px solid ' + (summarySize === s.id ? 'var(--accent)' : 'var(--border)'),
@@ -268,35 +302,130 @@ export default function SummaryTab() {
         })}
       </div>
 
-      {/* ── Action buttons ── */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-        <button onClick={summarizePage} disabled={loading} className="btn" style={{ flex: 1 }}>
-          {loading ? 'Summarizing...' : 'Summarize this page'}
-        </button>
+      {/* ═══════════════════════════════════════════════════════════
+          PAGE MODE — action button
+      ═══════════════════════════════════════════════════════════ */}
+      {!currentSummary && sourceMode === 'page' && (
         <button
-          onClick={() => canUpload ? fileInputRef.current?.click() : null}
-          disabled={loading || !canUpload}
-          className="btn-ghost"
-          title={canUpload ? 'Upload PDF or Word doc' : 'Upload requires Basic plan'}
-          style={{ padding: '8px 12px' }}
+          onClick={summarizePage}
+          disabled={loading}
+          className="btn"
+          style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 700, letterSpacing: '0.01em' }}
         >
-          {canUpload ? '⬆ Upload' : '🔒 Upload'}
+          {loading ? 'Summarizing...' : 'Summarize!!!'}
         </button>
-        <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.txt"
-          style={{ display: 'none' }} onChange={summarizeUpload} />
-      </div>
-
-      {/* ── Usage bar (logged-in users only) ── */}
-      {!isGuest && usage && (
-        <UsageBar usage={usage} plan={plan} />
       )}
 
-      {/* ── Summarize error ── */}
+      {/* ═══════════════════════════════════════════════════════════
+          DOCUMENT MODE — upload area
+      ═══════════════════════════════════════════════════════════ */}
+      {!currentSummary && sourceMode === 'document' && (
+        <div>
+          {!canUpload ? (
+            /* Free plan gate */
+            <div style={{
+              padding: '20px 16px', borderRadius: 'var(--radius-lg)', textAlign: 'center',
+              border: '2px dashed var(--border)', background: 'var(--bg2)',
+            }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>📄</div>
+              <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 12 }}>
+                Document upload requires <strong>Basic</strong> or <strong>Premium</strong> plan.
+              </p>
+              <button className="btn" style={{ fontSize: 12 }} onClick={handleUpgrade}>
+                Upgrade to unlock
+              </button>
+            </div>
+          ) : selectedFile ? (
+            /* File selected state */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px',
+                borderRadius: 'var(--radius-lg)', background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+              }}>
+                <span style={{ fontSize: 20 }}>📄</span>
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: '#15803d',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {selectedFile.name}
+                </span>
+                <span style={{ fontSize: 11, color: '#6b7280', flexShrink: 0 }}>
+                  {(selectedFile.size / 1024).toFixed(0)} KB
+                </span>
+                <button
+                  onClick={removeFile}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: '#9ca3af', fontSize: 16, lineHeight: 1, flexShrink: 0,
+                  }}
+                  title="Remove file"
+                >✕</button>
+              </div>
+              <button
+                onClick={summarizeDocument}
+                disabled={loading}
+                className="btn"
+                style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 700 }}
+              >
+                {loading ? 'Summarizing...' : 'Summarize Document'}
+              </button>
+              <button
+                onClick={() => { setSourceMode('page'); setSelectedFile(null); }}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--text2)', fontSize: 12, textAlign: 'center', padding: '2px',
+                }}
+              >
+                ← Switch to page summarization
+              </button>
+            </div>
+          ) : (
+            /* Drop zone */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  width: '100%', padding: '28px 16px', cursor: 'pointer',
+                  borderRadius: 'var(--radius-lg)', fontSize: 13, textAlign: 'center',
+                  border: '2px dashed var(--accent)', background: '#f5f3ff',
+                  color: 'var(--accent)', display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: 8, transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#ede9fe')}
+                onMouseLeave={e => (e.currentTarget.style.background = '#f5f3ff')}
+              >
+                <span style={{ fontSize: 32 }}>📂</span>
+                <span style={{ fontWeight: 600 }}>Click to upload your document</span>
+                <span style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 400 }}>
+                  PDF, Word (.docx), or plain text • Max 10 MB
+                </span>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.txt"
+                style={{ display: 'none' }}
+                onChange={onFileChosen}
+              />
+              <button
+                onClick={() => setSourceMode('page')}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--text2)', fontSize: 12, textAlign: 'center', padding: '2px',
+                }}
+              >
+                ← Back to page summarization
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Error ── */}
       {error && (
         <div style={{
           background: '#fef2f2', border: '1px solid #fecaca',
-          borderRadius: 8, padding: '10px 12px', fontSize: 13,
-          color: 'var(--danger)', marginBottom: 12,
+          borderRadius: 'var(--radius)', padding: '10px 12px', fontSize: 13,
+          color: 'var(--danger)', marginTop: 12,
         }}>
           {error}
         </div>
@@ -304,21 +433,28 @@ export default function SummaryTab() {
 
       {/* ── Loading ── */}
       {loading && (
-        <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text2)', fontSize: 13 }}>
-          <div style={{ fontSize: 24, marginBottom: 8 }}>✦</div>
+        <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text2)', fontSize: 13, marginTop: 4 }}>
+          <div style={{ fontSize: 22, marginBottom: 6 }}>✦</div>
           Analyzing content with AI...
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════
+      {/* ── Usage bar (logged-in, before summary) ── */}
+      {!isGuest && usage && !currentSummary && !loading && (
+        <div style={{ marginTop: 12 }}>
+          <UsageBar usage={usage} plan={plan} />
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════
           SUMMARY RESULT
-      ══════════════════════════════════════════════════════════ */}
+      ═══════════════════════════════════════════════════════════ */}
       {currentSummary && !loading && (
         <div>
           {/* Metrics bar */}
           <div style={{
             display: 'flex', gap: 10, marginBottom: 10, padding: '8px 12px',
-            background: 'var(--bg2)', borderRadius: 8, fontSize: 11,
+            background: 'var(--bg2)', borderRadius: 'var(--radius)', fontSize: 11,
           }}>
             <span style={{ color: 'var(--success)', fontWeight: 600 }}>
               ⏱ {fmtSeconds(currentSummary.metrics.timeSavedSec)} saved
@@ -334,7 +470,7 @@ export default function SummaryTab() {
           {/* Summary text */}
           <div style={{
             background: 'var(--bg2)', border: '1px solid var(--border)',
-            borderRadius: 10, padding: 14, fontSize: 'var(--font-size-base)',
+            borderRadius: 'var(--radius-lg)', padding: 14, fontSize: 'var(--font-size-base)',
             lineHeight: 1.65, color: 'var(--text)', marginBottom: 10,
             maxHeight: 240, overflowY: 'auto', whiteSpace: 'pre-wrap',
           }}>
@@ -344,12 +480,10 @@ export default function SummaryTab() {
           {/* ── Action toolbar ── */}
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 6, alignItems: 'center' }}>
 
-            {/* Copy */}
             <button onClick={handleCopy} className="btn-ghost" style={toolbarBtn}>
               {copied ? '✓ Copied' : '⎘ Copy'}
             </button>
 
-            {/* Listen */}
             <button onClick={handleAudio} className="btn-ghost" style={toolbarBtn}>
               {audioState === 'playing' ? '⏸ Pause' : audioState === 'paused' ? '▶ Resume' : '▶ Listen'}
             </button>
@@ -364,11 +498,7 @@ export default function SummaryTab() {
                 disabled={!!exportLoading}
                 className="btn-ghost"
                 title={canExport ? 'Download summary' : 'Requires Basic plan'}
-                style={{
-                  ...toolbarBtn,
-                  color: canExport ? 'var(--text2)' : 'var(--text2)',
-                  opacity: canExport ? 1 : 0.55,
-                }}
+                style={{ ...toolbarBtn, opacity: canExport ? 1 : 0.55 }}
               >
                 {exportLoading ? '...' : `⬇ Export${canExport ? '' : ' 🔒'}`}
               </button>
@@ -376,7 +506,8 @@ export default function SummaryTab() {
                 <div style={{
                   position: 'absolute', top: '110%', left: 0, zIndex: 50,
                   background: 'var(--bg)', border: '1px solid var(--border)',
-                  borderRadius: 9, boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                  borderRadius: 'var(--radius-lg)',
+                  boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
                   padding: 6, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 90,
                 }}>
                   {(['pdf', 'txt', 'docx'] as const).map(fmt => (
@@ -384,11 +515,10 @@ export default function SummaryTab() {
                       key={fmt}
                       onClick={() => canExport ? handleExport(fmt) : null}
                       style={{
-                        padding: '7px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                        padding: '7px 12px', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600,
                         background: 'transparent', border: 'none', textAlign: 'left',
                         color: canExport ? 'var(--text)' : 'var(--text2)',
-                        cursor: canExport ? 'pointer' : 'not-allowed',
-                        opacity: canExport ? 1 : 0.5,
+                        cursor: canExport ? 'pointer' : 'not-allowed', opacity: canExport ? 1 : 0.5,
                       }}
                       onMouseEnter={e => canExport && ((e.target as HTMLElement).style.background = 'var(--bg2)')}
                       onMouseLeave={e => ((e.target as HTMLElement).style.background = 'transparent')}
@@ -406,9 +536,7 @@ export default function SummaryTab() {
                 onClick={() => setShowSocialPanel(v => !v)}
                 className="btn-ghost"
                 style={{ ...toolbarBtn, color: showSocialPanel ? 'var(--accent)' : 'var(--text2)' }}
-              >
-                🖼 Social
-              </button>
+              >🖼 Social</button>
             ) : (
               <button className="btn-ghost" style={{ ...toolbarBtn, opacity: 0.5 }} title="Requires Basic plan">
                 🖼 Social 🔒
@@ -426,7 +554,7 @@ export default function SummaryTab() {
               {slidesLoading ? '...' : `📊 Slides${canSlides ? '' : ' 🔒'}`}
             </button>
 
-            {/* Chat toggle */}
+            {/* Chat */}
             <button
               onClick={() => canChat ? setShowChat(v => !v) : null}
               className="btn-ghost"
@@ -434,8 +562,7 @@ export default function SummaryTab() {
               style={{
                 ...toolbarBtn,
                 color: showChat ? 'var(--accent)' : canChat ? 'var(--text2)' : 'var(--text2)',
-                opacity: canChat ? 1 : 0.5,
-                cursor: canChat ? 'pointer' : 'not-allowed',
+                opacity: canChat ? 1 : 0.5, cursor: canChat ? 'pointer' : 'not-allowed',
               }}
             >
               💬 Chat{!canChat && ' 🔒'}
@@ -443,48 +570,33 @@ export default function SummaryTab() {
 
             {/* Clear */}
             <button
-              onClick={() => { setCurrentSummary(null); clearChat(); stopAudio(); }}
+              onClick={() => { setCurrentSummary(null); clearChat(); stopAudio(); setSelectedFile(null); }}
               className="btn-ghost"
               style={{ ...toolbarBtn, marginLeft: 'auto' }}
-            >
-              ✕ Clear
-            </button>
+            >✕ Clear</button>
           </div>
 
-          {/* Export error */}
-          {exportError && (
-            <p style={{ fontSize: 12, color: 'var(--danger)', marginBottom: 8 }}>{exportError}</p>
-          )}
+          {exportError && <p style={{ fontSize: 12, color: 'var(--danger)', marginBottom: 8 }}>{exportError}</p>}
 
           {/* ── Social image panel ── */}
           {showSocialPanel && maxSocialImages > 0 && (
             <div style={{
               marginBottom: 12, padding: '12px 14px', background: 'var(--bg2)',
-              border: '1px solid var(--border)', borderRadius: 10,
+              border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>Cards:</span>
                 {[2, 3, 4, 5].filter(n => n <= maxSocialImages).map(n => (
-                  <button
-                    key={n}
-                    onClick={() => setSocialCount(n)}
-                    style={{
-                      width: 26, height: 26, borderRadius: 6, fontSize: 12, fontWeight: 600,
-                      background: socialCount === n ? 'var(--accent)' : 'var(--bg)',
-                      color: socialCount === n ? '#fff' : 'var(--text)',
-                      border: '1px solid ' + (socialCount === n ? 'var(--accent)' : 'var(--border)'),
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {n}
-                  </button>
+                  <button key={n} onClick={() => setSocialCount(n)} style={{
+                    width: 26, height: 26, borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600,
+                    background: socialCount === n ? 'var(--accent)' : 'var(--bg)',
+                    color: socialCount === n ? '#fff' : 'var(--text)',
+                    border: '1px solid ' + (socialCount === n ? 'var(--accent)' : 'var(--border)'),
+                    cursor: 'pointer',
+                  }}>{n}</button>
                 ))}
-                <button
-                  onClick={handleSocialImages}
-                  disabled={socialLoading}
-                  className="btn"
-                  style={{ marginLeft: 'auto', fontSize: 12, padding: '5px 12px' }}
-                >
+                <button onClick={handleSocialImages} disabled={socialLoading} className="btn"
+                  style={{ marginLeft: 'auto', fontSize: 12, padding: '5px 12px' }}>
                   {socialLoading ? 'Generating...' : 'Generate'}
                 </button>
               </div>
@@ -493,7 +605,7 @@ export default function SummaryTab() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {socialCards.map((card, i) => (
                     <div key={i} style={{
-                      borderRadius: 8, padding: 12,
+                      borderRadius: 'var(--radius)', padding: 12,
                       background: (THEME_COLORS[card.theme] || '#6d4af7') + '15',
                       border: '1px solid ' + (THEME_COLORS[card.theme] || '#6d4af7') + '40',
                     }}>
@@ -507,60 +619,57 @@ export default function SummaryTab() {
             </div>
           )}
 
-          {/* Slides error */}
-          {slidesError && (
-            <p style={{ fontSize: 12, color: 'var(--danger)', marginBottom: 8 }}>{slidesError}</p>
+          {slidesError && <p style={{ fontSize: 12, color: 'var(--danger)', marginBottom: 8 }}>{slidesError}</p>}
+
+          {/* ── Usage bar (after summary) ── */}
+          {!isGuest && usage && (
+            <div style={{ marginTop: 6 }}>
+              <UsageBar usage={usage} plan={plan} />
+            </div>
           )}
 
-          {/* ══════════════════════════════════════════════════════
+          {/* ═══════════════════════════════════════════════════════
               INLINE CHAT
-          ══════════════════════════════════════════════════════ */}
+          ═══════════════════════════════════════════════════════ */}
           {showChat && canChat && (
             <div style={{
-              marginTop: 4, border: '1px solid var(--border)',
-              borderRadius: 10, overflow: 'hidden',
+              marginTop: 8, border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)', overflow: 'hidden',
             }}>
-              {/* Chat header */}
               <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '8px 12px', background: 'var(--bg2)',
                 borderBottom: '1px solid var(--border)',
               }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>
-                  💬 Ask about this page
+                  💬 Ask about this content
                 </span>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {chatHistory.length > 0 && (
-                    <button
-                      onClick={clearChat}
-                      style={{ fontSize: 11, color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer' }}
-                    >
+                    <button onClick={clearChat}
+                      style={{ fontSize: 11, color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer' }}>
                       Clear
                     </button>
                   )}
-                  <button
-                    onClick={() => setShowChat(false)}
-                    style={{ fontSize: 13, color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}
-                  >
+                  <button onClick={() => setShowChat(false)}
+                    style={{ fontSize: 13, color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}>
                     ✕
                   </button>
                 </div>
               </div>
 
-              {/* Messages */}
               <div style={{
-                maxHeight: 220, overflowY: 'auto',
-                padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8,
-                background: 'var(--bg)',
+                maxHeight: 220, overflowY: 'auto', padding: '10px 12px',
+                display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--bg)',
               }}>
                 {chatHistory.length === 0 && (
                   <div style={{ color: 'var(--text2)', fontSize: 12, textAlign: 'center', padding: '12px 0' }}>
-                    Ask anything about this page's content...
+                    Ask anything about this content...
                   </div>
                 )}
                 {chatHistory.map((msg, i) => (
                   <div key={i} style={{
-                    maxWidth: '85%', padding: '8px 11px', borderRadius: 9,
+                    maxWidth: '85%', padding: '8px 11px', borderRadius: 'var(--radius)',
                     fontSize: 13, lineHeight: 1.5,
                     alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
                     background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg2)',
@@ -572,7 +681,7 @@ export default function SummaryTab() {
                 ))}
                 {chatLoading && (
                   <div style={{
-                    alignSelf: 'flex-start', padding: '8px 11px', borderRadius: 9,
+                    alignSelf: 'flex-start', padding: '8px 11px', borderRadius: 'var(--radius)',
                     background: 'var(--bg2)', border: '1px solid var(--border)',
                     fontSize: 13, color: 'var(--text2)',
                   }}>
@@ -583,7 +692,6 @@ export default function SummaryTab() {
                 <div ref={chatBottomRef} />
               </div>
 
-              {/* Input */}
               <div style={{
                 padding: '8px 10px', borderTop: '1px solid var(--border)',
                 display: 'flex', gap: 7, background: 'var(--bg)',
@@ -595,17 +703,13 @@ export default function SummaryTab() {
                   placeholder="Ask a question..."
                   disabled={chatLoading}
                   style={{
-                    flex: 1, padding: '7px 11px', borderRadius: 7, fontSize: 13,
+                    flex: 1, padding: '7px 11px', fontSize: 13,
                     background: 'var(--bg2)', border: '1px solid var(--border)',
                     color: 'var(--text)', outline: 'none',
                   }}
                 />
-                <button
-                  onClick={sendChat}
-                  disabled={chatLoading || !chatInput.trim()}
-                  className="btn"
-                  style={{ padding: '7px 13px', fontSize: 14 }}
-                >
+                <button onClick={sendChat} disabled={chatLoading || !chatInput.trim()}
+                  className="btn" style={{ padding: '7px 13px', fontSize: 14 }}>
                   ↑
                 </button>
               </div>
@@ -617,7 +721,7 @@ export default function SummaryTab() {
       {/* ── Guest usage counter ── */}
       {isGuest && (
         <div style={{
-          marginTop: 16, padding: '10px 14px', borderRadius: 10, fontSize: 12,
+          marginTop: 14, padding: '10px 14px', borderRadius: 'var(--radius-lg)', fontSize: 12,
           background: guestLimitReached ? '#fef2f2' : '#f5f3ff',
           border: `1px solid ${guestLimitReached ? '#fecaca' : '#ddd6fe'}`,
           color: guestLimitReached ? '#b91c1c' : '#5b21b6',
@@ -643,10 +747,10 @@ export default function SummaryTab() {
       )}
 
       {/* ── Upgrade prompt for logged-in free users ── */}
-      {!isGuest && plan === 'free' && (
+      {!isGuest && plan === 'free' && !currentSummary && (
         <div style={{
-          marginTop: 16, padding: '10px 14px', background: '#f5f3ff',
-          border: '1px solid #ddd6fe', borderRadius: 10, fontSize: 12, color: '#5b21b6',
+          marginTop: 14, padding: '10px 14px', background: '#f5f3ff',
+          border: '1px solid #ddd6fe', borderRadius: 'var(--radius-lg)', fontSize: 12, color: '#5b21b6',
         }}>
           <strong>Free plan:</strong> 3 summaries/day, short size only.{' '}
           <span onClick={handleUpgrade}
@@ -659,67 +763,37 @@ export default function SummaryTab() {
   );
 }
 
-const toolbarBtn: React.CSSProperties = {
-  fontSize: 12, padding: '5px 9px',
-};
+const toolbarBtn: React.CSSProperties = { fontSize: 12, padding: '5px 9px' };
 
 // ── Usage bar component ──────────────────────────────────────────────
 function UsageBar({ usage, plan }: { usage: UsageStats; plan: string }) {
   const isUnlimited = usage.dailyLimit === null;
   const pct = isUnlimited ? 100 : Math.min(100, Math.round((usage.summariesToday / usage.dailyLimit!) * 100));
   const remaining = isUnlimited ? null : (usage.dailyLimit! - usage.summariesToday);
-
-  // Colour shifts red as the user approaches limit
-  const barColor = isUnlimited
-    ? '#16a34a'
-    : pct >= 90 ? '#dc2626' : pct >= 65 ? '#d97706' : '#6d4af7';
-
-  const now = new Date();
-  const monthName = now.toLocaleString('default', { month: 'long' });
+  const barColor = isUnlimited ? '#16a34a' : pct >= 90 ? '#dc2626' : pct >= 65 ? '#d97706' : '#6d4af7';
+  const monthName = new Date().toLocaleString('default', { month: 'long' });
 
   return (
     <div style={{
-      marginBottom: 12, padding: '9px 12px',
-      background: 'var(--bg2)', borderRadius: 8,
-      border: '1px solid var(--border)', fontSize: 12,
+      padding: '9px 12px', background: 'var(--bg2)',
+      borderRadius: 'var(--radius)', border: '1px solid var(--border)', fontSize: 12,
     }}>
-      {/* Top row: today's count + remaining */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
         <span style={{ fontWeight: 600, color: 'var(--text)' }}>
-          Today:&nbsp;
-          <span style={{ color: barColor }}>
-            {usage.summariesToday}{isUnlimited ? '' : ` / ${usage.dailyLimit}`}
-          </span>
-          {!isUnlimited && (
-            <span style={{ color: 'var(--text2)', fontWeight: 400 }}>
-              &nbsp;used
-            </span>
-          )}
+          Today:&nbsp;<span style={{ color: barColor }}>{usage.summariesToday}{isUnlimited ? '' : ` / ${usage.dailyLimit}`}</span>
+          {!isUnlimited && <span style={{ color: 'var(--text2)', fontWeight: 400 }}>&nbsp;used</span>}
         </span>
         <span style={{ color: 'var(--text2)' }}>
-          {isUnlimited
-            ? 'Unlimited'
-            : remaining === 0
-              ? <span style={{ color: '#dc2626', fontWeight: 600 }}>Limit reached</span>
-              : `${remaining} left today`}
+          {isUnlimited ? 'Unlimited' : remaining === 0
+            ? <span style={{ color: '#dc2626', fontWeight: 600 }}>Limit reached</span>
+            : `${remaining} left today`}
         </span>
       </div>
-
-      {/* Progress bar (hidden for unlimited) */}
       {!isUnlimited && (
-        <div style={{
-          height: 4, borderRadius: 2, background: 'var(--border)', marginBottom: 6, overflow: 'hidden',
-        }}>
-          <div style={{
-            height: '100%', borderRadius: 2,
-            width: `${pct}%`,
-            background: barColor,
-            transition: 'width 0.4s ease',
-          }} />
+        <div style={{ height: 4, borderRadius: 'var(--radius-full)', background: 'var(--border)', marginBottom: 6, overflow: 'hidden' }}>
+          <div style={{ height: '100%', borderRadius: 'var(--radius-full)', width: `${pct}%`, background: barColor, transition: 'width 0.4s ease' }} />
         </div>
       )}
-
-      {/* Bottom row: monthly + total */}
       <div style={{ display: 'flex', gap: 14, color: 'var(--text2)' }}>
         <span>{monthName}: <strong style={{ color: 'var(--text)' }}>{usage.summariesThisMonth}</strong></span>
         <span>All time: <strong style={{ color: 'var(--text)' }}>{usage.totalSummaries}</strong></span>

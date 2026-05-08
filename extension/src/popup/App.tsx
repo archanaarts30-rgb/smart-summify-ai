@@ -97,7 +97,7 @@ export default function App() {
           </div>
 
           {/* Tab content */}
-          <div style={{ background: 'var(--bg)', minHeight: 400 }}>
+          <div style={{ background: 'var(--bg)' }}>
             {tab === 'summary' && <SummaryTab />}
             {tab === 'history' && <HistoryTab />}
           </div>
