@@ -45,41 +45,48 @@ router.post('/', authenticate, async (req, res) => {
 
     const model = getModel();
 
-    // ─── Build context-aware prompt ─────────────────────────
-    const systemContext = `You are a helpful assistant answering questions about the following content.
-Only answer based on this content. If the answer isn't in the content, say so clearly.
+    // ─── Build full conversation as a single prompt ──────────
+    // Using generateContent (not startChat) for compatibility with all Gemini 2.x models.
+    const source = summary.source_url || summary.file_name || 'Uploaded document';
+
+    let prompt = `You are a helpful assistant answering questions about the following content.
+Only answer based on this content. If the answer is not in the content, say so clearly.
+
+SOURCE: ${source}
 
 CONTENT:
 ${summary.summary_text}
 
-SOURCE: ${summary.source_url || summary.file_name || 'Uploaded document'}`;
+---
+CONVERSATION SO FAR:
+`;
 
-    const chatHistory = history.map(msg => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }],
-    }));
+    for (const msg of history) {
+      const speaker = msg.role === 'user' ? 'User' : 'Assistant';
+      prompt += `${speaker}: ${msg.content}\n`;
+    }
 
-    const chat = model.startChat({
-      history: [
-        { role: 'user', parts: [{ text: systemContext }] },
-        { role: 'model', parts: [{ text: 'Understood. I will answer questions based only on this content.' }] },
-        ...chatHistory,
-      ],
-    });
+    prompt += `User: ${message}\nAssistant:`;
 
-    const result = await chat.sendMessage(message);
-    const reply = result.response.text();
+    const result = await model.generateContent(prompt);
+    const reply = result.response.text().trim();
 
     // ─── Persist thread to Supabase ─────────────────────────
-    await supabase.from('chat_messages').insert([
-      { summary_id: summaryId, user_id: req.user.id, role: 'user', content: message },
-      { summary_id: summaryId, user_id: req.user.id, role: 'assistant', content: reply },
+    const { error: insertError } = await supabase.from('chat_messages').insert([
+      { summary_id: summaryId, user_id: req.user.id, role: 'user',      content: message },
+      { summary_id: summaryId, user_id: req.user.id, role: 'assistant', content: reply  },
     ]);
+
+    if (insertError) {
+      // Non-fatal — still return the reply, just log the DB failure
+      console.error('[chat] Failed to persist messages:', insertError.message);
+    }
 
     res.json({ reply });
   } catch (err) {
-    console.error('Chat error:', err);
-    res.status(500).json({ error: 'Chat failed. Please try again.' });
+    const msg = err?.message || 'Unknown error';
+    console.error('[chat] Error:', msg, err);
+    res.status(500).json({ error: `Chat failed: ${msg}` });
   }
 });
 
