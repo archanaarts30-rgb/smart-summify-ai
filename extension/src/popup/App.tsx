@@ -3,13 +3,11 @@ import { onAuthChange } from '../lib/firebase';
 import { useStore } from '../store';
 import AuthScreen from '../components/AuthScreen';
 import SummaryTab from '../components/SummaryTab';
-import ChatTab from '../components/ChatTab';
-import ExportTab from '../components/ExportTab';
 import HistoryTab from '../components/HistoryTab';
 import Header from '../components/Header';
 import ProfilePage from '../components/ProfilePage';
 
-type Tab = 'summary' | 'chat' | 'export' | 'history';
+type Tab = 'summary' | 'history';
 type View = 'main' | 'profile';
 
 export default function App() {
@@ -59,8 +57,6 @@ export default function App() {
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'summary', label: 'Summarize' },
-    { id: 'chat',    label: 'Chat' },
-    { id: 'export',  label: 'Export' },
     { id: 'history', label: 'History' },
   ];
 
@@ -102,8 +98,6 @@ export default function App() {
           {/* Tab content */}
           <div style={{ background: 'var(--bg)', minHeight: 400 }}>
             {tab === 'summary' && <SummaryTab />}
-            {tab === 'chat'    && <ChatTab />}
-            {tab === 'export'  && <ExportTab />}
             {tab === 'history' && <HistoryTab />}
           </div>
         </>
