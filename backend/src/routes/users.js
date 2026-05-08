@@ -76,7 +76,13 @@ router.post('/subscribe', authenticate, async (req, res) => {
       await supabase.from('users').update({ stripe_customer_id: customerId }).eq('id', req.user.id);
     }
 
-    const backendUrl = process.env.BACKEND_URL || `https://smart-summify-ai-development.up.railway.app`;
+    // Resolve own public URL: prefer explicit override, then Railway's auto-injected
+    // RAILWAY_PUBLIC_DOMAIN, then fall back to the dev Railway service URL.
+    const backendUrl = process.env.BACKEND_URL
+      || (process.env.RAILWAY_PUBLIC_DOMAIN
+            ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+            : null)
+      || `https://smart-summify-ai-development.up.railway.app`;
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
