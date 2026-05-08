@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../store';
 import { updateProfile, subscribe, openBillingPortal } from '../lib/api';
 import { logout } from '../lib/firebase';
+import type { UsageStats } from '../store';
 
 interface ProfilePageProps {
   onBack: () => void;
@@ -83,7 +84,7 @@ function getInitials(displayName: string): string {
 }
 
 export default function ProfilePage({ onBack }: ProfilePageProps) {
-  const { user, setUser, clearUser } = useStore();
+  const { user, setUser, clearUser, usage } = useStore();
   const [innerTab, setInnerTab] = useState<InnerTab>('profile');
 
   // Profile tab state
@@ -298,6 +299,10 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
       {/* ── Billing tab ── */}
       {innerTab === 'billing' && (
         <div style={{ padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+          {/* Usage stats card */}
+          {usage && <UsageCard usage={usage} plan={currentPlan} planColor={cfg.color} />}
+
           {billingError && (
             <div style={{
               background: '#fef2f2', border: '1px solid #fecaca',
@@ -421,6 +426,72 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
           <p style={{ fontSize: 11, color: 'var(--text2)', textAlign: 'center', marginTop: 4 }}>
             Payments are securely handled by Stripe. Cancel anytime.
           </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Usage card for Billing tab ───────────────────────────────────────
+function UsageCard({ usage, plan, planColor }: { usage: UsageStats; plan: string; planColor: string }) {
+  const isUnlimited = usage.dailyLimit === null;
+  const pct = isUnlimited ? 100 : Math.min(100, Math.round((usage.summariesToday / usage.dailyLimit!) * 100));
+  const remaining = isUnlimited ? null : (usage.dailyLimit! - usage.summariesToday);
+  const barColor = isUnlimited
+    ? '#16a34a'
+    : pct >= 90 ? '#dc2626' : pct >= 65 ? '#d97706' : planColor;
+
+  const now = new Date();
+  const monthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  const statBox = (label: string, value: string | number) => (
+    <div style={{
+      flex: 1, textAlign: 'center', padding: '10px 6px',
+      background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)',
+    }}>
+      <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', marginBottom: 2 }}>{value}</div>
+      <div style={{ fontSize: 10, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+    </div>
+  );
+
+  return (
+    <div style={{
+      borderRadius: 12, padding: '14px 16px',
+      background: `${planColor}08`, border: `1px solid ${planColor}30`,
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: planColor, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+        Usage Summary
+      </div>
+
+      {/* Three stat boxes */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        {statBox('Today', usage.summariesToday)}
+        {statBox(monthName.split(' ')[0], usage.summariesThisMonth)}
+        {statBox('All Time', usage.totalSummaries)}
+      </div>
+
+      {/* Daily limit bar */}
+      <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 5, display: 'flex', justifyContent: 'space-between' }}>
+        <span>Daily limit</span>
+        <span style={{ fontWeight: 600, color: barColor }}>
+          {isUnlimited
+            ? 'Unlimited'
+            : remaining === 0
+              ? 'Limit reached — resets at midnight'
+              : `${remaining} remaining today`}
+        </span>
+      </div>
+      {!isUnlimited && (
+        <div style={{ height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }}>
+          <div style={{
+            height: '100%', borderRadius: 3, background: barColor,
+            width: `${pct}%`, transition: 'width 0.4s ease',
+          }} />
+        </div>
+      )}
+      {!isUnlimited && (
+        <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, textAlign: 'right' }}>
+          {usage.summariesToday} / {usage.dailyLimit} used
         </div>
       )}
     </div>

@@ -7,18 +7,27 @@ const router = express.Router();
 
 // ─── Get current user profile + usage ──────────────────────────────
 router.get('/me', authenticate, async (req, res) => {
-  const today = new Date().toISOString().split('T')[0];
+  const now   = new Date();
+  const today = now.toISOString().split('T')[0];
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01T00:00:00Z`;
 
-  const { count: summariesToday } = await supabase
-    .from('summaries')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', req.user.id)
-    .gte('created_at', `${today}T00:00:00Z`);
-
-  const { count: totalSummaries } = await supabase
-    .from('summaries')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', req.user.id);
+  const [{ count: summariesToday }, { count: summariesThisMonth }, { count: totalSummaries }] =
+    await Promise.all([
+      supabase
+        .from('summaries')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', req.user.id)
+        .gte('created_at', `${today}T00:00:00Z`),
+      supabase
+        .from('summaries')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', req.user.id)
+        .gte('created_at', monthStart),
+      supabase
+        .from('summaries')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', req.user.id),
+    ]);
 
   const limits = PLAN_LIMITS[req.user.plan];
 
@@ -32,8 +41,10 @@ router.get('/me', authenticate, async (req, res) => {
     },
     usage: {
       summariesToday,
+      summariesThisMonth,
       totalSummaries,
-      dailyLimit: limits.summaries_per_day === Infinity ? null : limits.summaries_per_day,
+      dailyLimit:   limits.summaries_per_day === Infinity ? null : limits.summaries_per_day,
+      monthlyLimit: null, // all plans are daily-limited, not monthly-capped
     },
     limits,
   });

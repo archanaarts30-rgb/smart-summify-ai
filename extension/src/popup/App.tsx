@@ -11,7 +11,7 @@ type Tab = 'summary' | 'history';
 type View = 'main' | 'profile';
 
 export default function App() {
-  const { user, setUser, clearUser, theme, fontSize, showAuthModal, setShowAuthModal } = useStore();
+  const { user, setUser, clearUser, setUsage, theme, fontSize, showAuthModal, setShowAuthModal } = useStore();
   const [tab, setTab] = useState<Tab>('summary');
   const [view, setView] = useState<View>('main');
   const [authLoading, setAuthLoading] = useState(true);
@@ -33,6 +33,7 @@ export default function App() {
           if (res.ok) {
             const data = await res.json();
             setUser(data.user);
+            setUsage(data.usage ?? null);
           } else {
             setUser(fallbackUser);
           }

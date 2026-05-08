@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useStore, GUEST_FREE_LIMIT } from '../store';
+import { useStore, GUEST_FREE_LIMIT, UsageStats } from '../store';
 import {
   summarizeContent, summarizeContentGuest, summarizeFile,
   subscribe, exportSummary, generateSocialImages, generateSlides, sendChatMessage,
@@ -20,6 +20,7 @@ export default function SummaryTab() {
     user, summarySize, setSummarySize, currentSummary, setCurrentSummary, setAudioPlaying,
     guestSummaryCount, incrementGuestCount, setShowAuthModal,
     chatHistory, addChatMessage, clearChat,
+    usage, setUsage,
   } = useStore();
 
   // ── Summarize state ──────────────────────────────────────────────
@@ -105,6 +106,15 @@ export default function SummaryTab() {
         incrementGuestCount();
       } else {
         result = await summarizeContent(response.content, summarySize, response.url);
+        // Optimistically bump local usage counters so the bar updates instantly
+        if (usage) {
+          setUsage({
+            ...usage,
+            summariesToday:     usage.summariesToday + 1,
+            summariesThisMonth: usage.summariesThisMonth + 1,
+            totalSummaries:     usage.totalSummaries + 1,
+          });
+        }
       }
       setCurrentSummary(result);
     } catch (e: any) {
@@ -275,6 +285,11 @@ export default function SummaryTab() {
         <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.txt"
           style={{ display: 'none' }} onChange={summarizeUpload} />
       </div>
+
+      {/* ── Usage bar (logged-in users only) ── */}
+      {!isGuest && usage && (
+        <UsageBar usage={usage} plan={plan} />
+      )}
 
       {/* ── Summarize error ── */}
       {error && (
@@ -647,3 +662,68 @@ export default function SummaryTab() {
 const toolbarBtn: React.CSSProperties = {
   fontSize: 12, padding: '5px 9px',
 };
+
+// ── Usage bar component ──────────────────────────────────────────────
+function UsageBar({ usage, plan }: { usage: UsageStats; plan: string }) {
+  const isUnlimited = usage.dailyLimit === null;
+  const pct = isUnlimited ? 100 : Math.min(100, Math.round((usage.summariesToday / usage.dailyLimit!) * 100));
+  const remaining = isUnlimited ? null : (usage.dailyLimit! - usage.summariesToday);
+
+  // Colour shifts red as the user approaches limit
+  const barColor = isUnlimited
+    ? '#16a34a'
+    : pct >= 90 ? '#dc2626' : pct >= 65 ? '#d97706' : '#6d4af7';
+
+  const now = new Date();
+  const monthName = now.toLocaleString('default', { month: 'long' });
+
+  return (
+    <div style={{
+      marginBottom: 12, padding: '9px 12px',
+      background: 'var(--bg2)', borderRadius: 8,
+      border: '1px solid var(--border)', fontSize: 12,
+    }}>
+      {/* Top row: today's count + remaining */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+        <span style={{ fontWeight: 600, color: 'var(--text)' }}>
+          Today:&nbsp;
+          <span style={{ color: barColor }}>
+            {usage.summariesToday}{isUnlimited ? '' : ` / ${usage.dailyLimit}`}
+          </span>
+          {!isUnlimited && (
+            <span style={{ color: 'var(--text2)', fontWeight: 400 }}>
+              &nbsp;used
+            </span>
+          )}
+        </span>
+        <span style={{ color: 'var(--text2)' }}>
+          {isUnlimited
+            ? 'Unlimited'
+            : remaining === 0
+              ? <span style={{ color: '#dc2626', fontWeight: 600 }}>Limit reached</span>
+              : `${remaining} left today`}
+        </span>
+      </div>
+
+      {/* Progress bar (hidden for unlimited) */}
+      {!isUnlimited && (
+        <div style={{
+          height: 4, borderRadius: 2, background: 'var(--border)', marginBottom: 6, overflow: 'hidden',
+        }}>
+          <div style={{
+            height: '100%', borderRadius: 2,
+            width: `${pct}%`,
+            background: barColor,
+            transition: 'width 0.4s ease',
+          }} />
+        </div>
+      )}
+
+      {/* Bottom row: monthly + total */}
+      <div style={{ display: 'flex', gap: 14, color: 'var(--text2)' }}>
+        <span>{monthName}: <strong style={{ color: 'var(--text)' }}>{usage.summariesThisMonth}</strong></span>
+        <span>All time: <strong style={{ color: 'var(--text)' }}>{usage.totalSummaries}</strong></span>
+      </div>
+    </div>
+  );
+}

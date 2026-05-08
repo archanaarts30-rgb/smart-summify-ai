@@ -27,11 +27,22 @@ export interface ChatMessage {
 
 export const GUEST_FREE_LIMIT = 3;
 
+export interface UsageStats {
+  summariesToday:     number;
+  summariesThisMonth: number;
+  totalSummaries:     number;
+  dailyLimit:         number | null; // null = unlimited
+}
+
 interface AppState {
   // Auth
   user: { id: string; email: string; displayName: string; plan: Plan } | null;
   setUser: (user: AppState['user']) => void;
   clearUser: () => void;
+
+  // Usage stats (fetched from /v1/users/me)
+  usage: UsageStats | null;
+  setUsage: (usage: UsageStats | null) => void;
 
   // Guest usage (unauthenticated free tier)
   guestSummaryCount: number;
@@ -70,7 +81,10 @@ export const useStore = create<AppState>()(
     (set, get) => ({
       user: null,
       setUser: (user) => set({ user, showAuthModal: false }),
-      clearUser: () => set({ user: null, currentSummary: null, chatHistory: [], guestSummaryCount: 0 }),
+      clearUser: () => set({ user: null, usage: null, currentSummary: null, chatHistory: [], guestSummaryCount: 0 }),
+
+      usage: null,
+      setUsage: (usage) => set({ usage }),
 
       guestSummaryCount: 0,
       incrementGuestCount: () => set((s) => ({ guestSummaryCount: s.guestSummaryCount + 1 })),
