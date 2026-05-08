@@ -7,12 +7,15 @@ import ChatTab from '../components/ChatTab';
 import ExportTab from '../components/ExportTab';
 import HistoryTab from '../components/HistoryTab';
 import Header from '../components/Header';
+import ProfilePage from '../components/ProfilePage';
 
 type Tab = 'summary' | 'chat' | 'export' | 'history';
+type View = 'main' | 'profile';
 
 export default function App() {
   const { user, setUser, clearUser, theme, fontSize, showAuthModal, setShowAuthModal } = useStore();
   const [tab, setTab] = useState<Tab>('summary');
+  const [view, setView] = useState<View>('main');
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
@@ -63,34 +66,48 @@ export default function App() {
 
   return (
     <div data-theme={theme} style={{ '--font-size-base': `${fontSize}px` } as React.CSSProperties}>
-      <Header onSignInClick={() => setShowAuthModal(true)} />
 
-      {/* Tab bar */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
-        {tabs.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            style={{
-              flex: 1, padding: '10px 4px', fontSize: 13, fontWeight: tab === t.id ? 600 : 400,
-              color: tab === t.id ? 'var(--accent)' : 'var(--text2)',
-              background: 'transparent', border: 'none',
-              borderBottom: tab === t.id ? '2px solid var(--accent)' : '2px solid transparent',
-              cursor: 'pointer', transition: 'all 0.15s',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {/* ── Profile view ── */}
+      {view === 'profile' && (
+        <ProfilePage onBack={() => setView('main')} />
+      )}
 
-      {/* Tab content */}
-      <div style={{ background: 'var(--bg)', minHeight: 400 }}>
-        {tab === 'summary' && <SummaryTab />}
-        {tab === 'chat'    && <ChatTab />}
-        {tab === 'export'  && <ExportTab />}
-        {tab === 'history' && <HistoryTab />}
-      </div>
+      {/* ── Main view ── */}
+      {view === 'main' && (
+        <>
+          <Header
+            onSignInClick={() => setShowAuthModal(true)}
+            onAvatarClick={() => setView('profile')}
+          />
+
+          {/* Tab bar */}
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+            {tabs.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                style={{
+                  flex: 1, padding: '10px 4px', fontSize: 13, fontWeight: tab === t.id ? 600 : 400,
+                  color: tab === t.id ? 'var(--accent)' : 'var(--text2)',
+                  background: 'transparent', border: 'none',
+                  borderBottom: tab === t.id ? '2px solid var(--accent)' : '2px solid transparent',
+                  cursor: 'pointer', transition: 'all 0.15s',
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab content */}
+          <div style={{ background: 'var(--bg)', minHeight: 400 }}>
+            {tab === 'summary' && <SummaryTab />}
+            {tab === 'chat'    && <ChatTab />}
+            {tab === 'export'  && <ExportTab />}
+            {tab === 'history' && <HistoryTab />}
+          </div>
+        </>
+      )}
 
       {/* Auth modal overlay — shown when guest hits limit or clicks Sign In */}
       {showAuthModal && (

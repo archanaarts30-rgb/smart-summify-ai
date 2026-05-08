@@ -1,18 +1,13 @@
 import React from 'react';
 import { useStore } from '../store';
-import { logout } from '../lib/firebase';
 
 interface HeaderProps {
   onSignInClick: () => void;
+  onAvatarClick?: () => void;
 }
 
-export default function Header({ onSignInClick }: HeaderProps) {
-  const { user, clearUser, theme, toggleTheme, fontSize, increaseFontSize, decreaseFontSize } = useStore();
-
-  const handleLogout = async () => {
-    await logout();
-    clearUser();
-  };
+export default function Header({ onSignInClick, onAvatarClick }: HeaderProps) {
+  const { user, theme, toggleTheme, fontSize, increaseFontSize, decreaseFontSize } = useStore();
 
   const planColors: Record<string, string> = {
     free: '#71717a',
@@ -38,29 +33,44 @@ export default function Header({ onSignInClick }: HeaderProps) {
         <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--accent)' }}>Smart Summify</span>
         {user && (
           <>
-            {/* Avatar circle with initials */}
-            <div
-              title={user.displayName || user.email}
+            {/* Clickable avatar — opens profile page */}
+            <button
+              onClick={onAvatarClick}
+              title="View profile & billing"
               style={{
-                width: 26, height: 26, borderRadius: '50%',
-                background: `linear-gradient(135deg, ${planColors[user.plan]}, ${planColors[user.plan]}aa)`,
+                width: 28, height: 28, borderRadius: '50%',
+                background: `linear-gradient(135deg, ${planColors[user.plan]}, ${planColors[user.plan]}bb)`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 10, fontWeight: 700, color: '#fff',
                 letterSpacing: '0.03em', flexShrink: 0,
-                boxShadow: `0 0 0 2px ${planColors[user.plan]}30`,
+                boxShadow: `0 0 0 2px ${planColors[user.plan]}40`,
+                border: 'none', cursor: 'pointer',
+                transition: 'transform 0.15s, box-shadow 0.15s',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.1)';
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 0 3px ${planColors[user.plan]}60`;
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 0 2px ${planColors[user.plan]}40`;
               }}
             >
               {getInitials(user.displayName || user.email)}
-            </div>
+            </button>
 
-            {/* Plan badge */}
-            <span style={{
-              fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20,
-              background: planColors[user.plan] + '20',
-              color: planColors[user.plan], textTransform: 'uppercase', letterSpacing: '0.05em',
-            }}>
+            {/* Plan badge — also clickable to profile */}
+            <button
+              onClick={onAvatarClick}
+              style={{
+                fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20,
+                background: planColors[user.plan] + '20',
+                color: planColors[user.plan], textTransform: 'uppercase', letterSpacing: '0.05em',
+                border: 'none', cursor: 'pointer',
+              }}
+            >
               {user.plan}
-            </span>
+            </button>
           </>
         )}
       </div>
@@ -76,12 +86,8 @@ export default function Header({ onSignInClick }: HeaderProps) {
           {theme === 'dark' ? '☀' : '◑'}
         </button>
 
-        {/* Sign in (guest) or Sign out (logged in) */}
-        {user ? (
-          <button onClick={handleLogout} title="Sign out" style={{ ...iconBtn, color: 'var(--danger)' }}>
-            ⏏
-          </button>
-        ) : (
+        {/* Sign in button for guests; logged-in users use the avatar */}
+        {!user && (
           <button
             onClick={onSignInClick}
             title="Sign in"
