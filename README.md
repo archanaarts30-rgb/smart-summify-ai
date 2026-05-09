@@ -17,9 +17,24 @@ smart-summify-ai/
 
 ---
 
+## Environments
+
+This project maintains **two fully isolated environments**. Each has its own accounts and credentials — nothing is shared between dev and prod.
+
+| Service | Development | Production |
+|---|---|---|
+| Firebase | `smart-summify-ai` project | New Firebase project (separate) |
+| Supabase | Dev project | New Supabase project (separate) |
+| Railway | Dev service | New Railway service (separate) |
+| Stripe | Test mode (`sk_test_...`) | Live mode (`sk_live_...`) |
+| Gemini | Dev API key | Separate production API key |
+| Chrome Extension | Loaded unpacked via `dist/` | Published on Chrome Web Store |
+
+---
+
 ## Services Overview & Dependencies
 
-This project uses **5 external services**. They must be set up in the order below because each depends on the previous one.
+The 5 services must be set up in the order below because each depends on the previous one.
 
 ```
 Firebase (Auth)
@@ -31,191 +46,246 @@ Backend (Railway)
   Extension (Chrome)
 ```
 
+**Why this order matters:**
+- Railway needs Firebase credentials (Step 1) and Supabase credentials (Step 2) before it can start
+- Stripe webhook (Step 4) needs the Railway URL (Step 3) to know where to send events
+- The Extension (Step 6) needs the Railway URL (Step 3) and Firebase App ID (Step 1)
+- Google OAuth redirect URI (Step 5) needs the Extension ID (Step 6) — done last
+
 ---
 
 ## Production Deployment — Step-by-Step
 
+---
+
 ### Step 1 — Firebase (Authentication)
 
-Firebase is shared between dev and production — you use the **same Firebase project**.
+Create a **brand new Firebase project** for production — completely separate from your dev project.
 
-1. Go to [console.firebase.google.com](https://console.firebase.google.com) → your project (`smart-summify-ai`)
-2. **Authentication → Settings → Authorized domains** → Add your production Railway domain:
-   ```
-   smart-summify-ai-production.up.railway.app
-   ```
-   (Add it after you create the Railway production service in Step 3)
-3. **Project Settings → Service Accounts** → you already have a service account key from dev.
-   Use the same `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` values for production.
+**1a. Create the project**
 
-> No new Firebase project is needed. Firebase Auth tokens work across dev and prod since it is the same project.
+1. Go to [console.firebase.google.com](https://console.firebase.google.com)
+2. Click **Add project** → name it e.g. `smart-summify-ai-prod`
+3. Disable Google Analytics if not needed → **Create project**
+
+**1b. Enable Authentication**
+
+1. Left sidebar → **Authentication → Get started**
+2. **Sign-in method** tab → enable:
+   - **Google** (set support email)
+   - **Email/Password**
+3. **Settings → Authorized domains** → your production Railway domain will be added in Step 3
+
+**1c. Get the Firebase client config (for the Extension)**
+
+1. **Project Settings** (gear icon) → **General** → scroll to **Your apps**
+2. Click **+ Add app** → choose **Web** (`</>`)
+3. Register the app (nickname e.g. `Smart Summify Prod Extension`) → **Register app**
+4. Copy the config object — you need these values for `extension/.env.production`:
+   ```
+   apiKey              → VITE_FIREBASE_API_KEY
+   authDomain          → VITE_FIREBASE_AUTH_DOMAIN
+   projectId           → VITE_FIREBASE_PROJECT_ID
+   storageBucket       → VITE_FIREBASE_STORAGE_BUCKET
+   messagingSenderId   → VITE_FIREBASE_MESSAGING_SENDER_ID
+   appId               → VITE_FIREBASE_APP_ID
+   ```
+
+**1d. Get the Firebase Admin SDK key (for the Backend)**
+
+1. **Project Settings → Service Accounts**
+2. Click **Generate new private key** → **Generate key** → a `.json` file downloads
+3. Open the JSON file and copy:
+   ```
+   project_id    → FIREBASE_PROJECT_ID
+   client_email  → FIREBASE_CLIENT_EMAIL
+   private_key   → FIREBASE_PRIVATE_KEY
+   ```
+   > When pasting `private_key` into Railway, keep the surrounding quotes and keep `\n` as literal backslash-n characters.
 
 ---
 
 ### Step 2 — Supabase (Database & Storage)
 
-**Option A — Use the same Supabase project (recommended while starting out)**
+Create a **brand new Supabase project** for production.
 
-Use the same URL and service role key from dev. All user data, summaries, and exports live in one place.
+**2a. Create the project**
 
-**Option B — Create a dedicated production Supabase project (recommended before scaling)**
+1. Go to [supabase.com](https://supabase.com) → **New project**
+2. Name it e.g. `smart-summify-prod`, choose a strong database password, select a region close to your users
+3. Wait for the project to provision (~2 minutes)
 
-1. Go to [supabase.com](https://supabase.com) → New project
-2. Open the SQL editor and run all table creation scripts from `docs/SETUP.md` (the full schema section)
-3. Go to **Project Settings → API** → copy:
-   - `SUPABASE_URL` (format: `https://xxxx.supabase.co`)
-   - `SUPABASE_SERVICE_ROLE_KEY` (the `service_role` key, not the `anon` key)
-4. In **Storage**, create a bucket named `exports` and set it to **private**
+**2b. Run the database schema**
 
-> The `SUPABASE_SERVICE_ROLE_KEY` is a secret — it bypasses Row Level Security. It must only ever be set on the backend (Railway), never in the extension.
+1. Left sidebar → **SQL Editor** → **+ New query**
+2. Copy and paste the entire schema SQL from `docs/SETUP.md` (the "Database Schema" section)
+3. Click **Run** — this creates the `users`, `summaries`, and `chat_messages` tables
+
+**2c. Create the Storage bucket**
+
+1. Left sidebar → **Storage** → **+ New bucket**
+2. Name: `exports`
+3. Toggle **Public bucket** to **OFF** (must be private)
+4. Click **Create bucket**
+
+**2d. Get credentials (for the Backend)**
+
+1. **Project Settings → API**
+2. Copy:
+   - **Project URL** → `SUPABASE_URL` (format: `https://xxxx.supabase.co`, no trailing slash)
+   - **service_role** key (under "Project API keys") → `SUPABASE_SERVICE_ROLE_KEY`
+   > Do NOT use the `anon` key for the backend. The `service_role` key bypasses Row Level Security and must only ever go on the backend (Railway), never in the extension.
 
 ---
 
 ### Step 3 — Railway (Backend)
 
-Create a **separate** Railway service for production. Do not reuse the development service.
+Create a **new Railway service** for production — do not reuse the development service.
 
 **3a. Create the service**
 
 1. Go to [railway.app](https://railway.app) → your project → **+ New Service → GitHub Repo**
-2. Select the `smart-summify-ai` repository and the `main` branch
+2. Select the `smart-summify-ai` repository → branch: `main`
 3. Set **Root Directory** to `backend`
-4. Railway auto-detects Node.js and runs `npm start`
+4. Railway auto-detects Node.js and uses `npm start`
+5. After the first deploy, Railway assigns a public domain (e.g. `smart-summify-ai-production.up.railway.app`) — copy it
 
 **3b. Set environment variables**
 
-Go to the service → **Variables** tab and add every variable below.
+Go to the service → **Variables** tab. Add every variable in this table:
 
-| Variable | Value | Notes |
+| Variable | Value | Where to get it |
 |---|---|---|
-| `NODE_ENV` | `production` | Must be exactly this — disables dev-only behaviour |
-| `PORT` | `3001` | Railway uses this to know which port to expose |
-| `FIREBASE_PROJECT_ID` | `smart-summify-ai` | From Firebase Console → Project Settings |
-| `FIREBASE_CLIENT_EMAIL` | `firebase-adminsdk-xxxx@smart-summify-ai.iam.gserviceaccount.com` | From your service account key file |
-| `FIREBASE_PRIVATE_KEY` | `"-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"` | Paste with the surrounding quotes; `\n` must be literal backslash-n |
-| `SUPABASE_URL` | `https://xxxx.supabase.co` | No trailing slash |
-| `SUPABASE_SERVICE_ROLE_KEY` | `eyJhbGci...` | The `service_role` key from Supabase → Project Settings → API |
-| `GEMINI_API_KEY` | `AIza...` | From [aistudio.google.com](https://aistudio.google.com) → API Keys |
-| `STRIPE_SECRET_KEY` | `sk_live_...` | From Stripe **Live mode** → Developers → API Keys |
-| `STRIPE_WEBHOOK_SECRET` | `whsec_...` | Created in Step 4 after the service is deployed |
-| `STRIPE_BASIC_PRICE_ID` | `price_...` | From Stripe **Live mode** → Products → Basic plan → Price ID |
-| `STRIPE_PREMIUM_PRICE_ID` | `price_...` | From Stripe **Live mode** → Products → Premium plan → Price ID |
-| `CHROME_EXTENSION_ID` | `abcdefghijklmnopqrstuvwxyzabcdef` | Set this after Chrome Web Store publishes your extension (Step 6) |
+| `NODE_ENV` | `production` | Type literally — must be exactly this |
+| `PORT` | `3001` | Type literally |
+| `FIREBASE_PROJECT_ID` | `smart-summify-ai-prod` | Step 1d → `project_id` from the JSON key file |
+| `FIREBASE_CLIENT_EMAIL` | `firebase-adminsdk-xxxx@smart-summify-ai-prod.iam.gserviceaccount.com` | Step 1d → `client_email` |
+| `FIREBASE_PRIVATE_KEY` | `"-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"` | Step 1d → `private_key` (paste with quotes; keep `\n` as-is) |
+| `SUPABASE_URL` | `https://xxxx.supabase.co` | Step 2d |
+| `SUPABASE_SERVICE_ROLE_KEY` | `eyJhbGci...` | Step 2d → `service_role` key |
+| `GEMINI_API_KEY` | `AIza...` | [aistudio.google.com](https://aistudio.google.com) → create a new key for prod |
+| `STRIPE_SECRET_KEY` | `sk_live_...` | Step 4a — add this after completing Step 4 |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_...` | Step 4c — add this after completing Step 4 |
+| `STRIPE_BASIC_PRICE_ID` | `price_...` | Step 4b — add after creating live products |
+| `STRIPE_PREMIUM_PRICE_ID` | `price_...` | Step 4b — add after creating live products |
+| `CHROME_EXTENSION_ID` | `abcdef...` | Step 6e — add after Chrome Web Store approval |
 
-> `RAILWAY_PUBLIC_DOMAIN` is injected automatically by Railway — do NOT set it manually.
-> `BACKEND_URL` is not needed on Railway — it only applies to local tunnels (ngrok, etc.).
+> `RAILWAY_PUBLIC_DOMAIN` is injected automatically — do NOT set it.
+> `BACKEND_URL` is only needed for local tunnels (ngrok) — do NOT set it on Railway.
 
-**3c. After deployment**
+**3c. Go back to Firebase and add the authorized domain**
 
-- Copy the public domain Railway gives you (e.g. `smart-summify-ai-production.up.railway.app`)
-- Go back to Firebase (Step 1) and add this domain to Authorized Domains
+1. [console.firebase.google.com](https://console.firebase.google.com) → your **production** project
+2. **Authentication → Settings → Authorized domains → Add domain**
+3. Add: `smart-summify-ai-production.up.railway.app` (your actual Railway domain)
 
 ---
 
 ### Step 4 — Stripe (Payments)
 
-Your dev environment used Stripe **test mode** (`sk_test_...`). Production requires **live mode**.
+Stripe uses the **same account** but separate **Live mode** for production (vs Test mode for dev). No new account needed.
 
-**4a. Switch to Live mode and get keys**
+**4a. Get the Live secret key**
 
-1. [dashboard.stripe.com](https://dashboard.stripe.com) → toggle **Live mode** (top-left of dashboard)
+1. [dashboard.stripe.com](https://dashboard.stripe.com) → toggle **Live mode** (top-left of dashboard — the toggle switches the entire dashboard)
 2. **Developers → API Keys** → copy the `sk_live_...` **Secret key**
-3. Add it to Railway prod as `STRIPE_SECRET_KEY`
+3. Add to Railway prod as `STRIPE_SECRET_KEY`
 
 **4b. Create Live mode Products and Prices**
 
-1. **Products** → create your Basic and Premium products in Live mode (they don't carry over from test mode automatically)
-2. For each product, add a **recurring price** (monthly)
-3. Copy each `price_live_...` Price ID (not the Product ID — they start with `price_`, not `prod_`)
-4. Add to Railway prod as `STRIPE_BASIC_PRICE_ID` and `STRIPE_PREMIUM_PRICE_ID`
+Products created in Test mode do NOT carry over to Live mode — you must recreate them.
 
-**4c. Set up the webhook**
+1. **Products** (in Live mode) → **+ Add product**
+2. Create **Basic** plan:
+   - Name: `Basic`
+   - Add a price: Recurring, monthly, your price (e.g. $4.99/month)
+   - Click **Save product**
+   - Copy the `price_live_...` **Price ID** (NOT the product ID which starts with `prod_`)
+   - Add to Railway prod as `STRIPE_BASIC_PRICE_ID`
+3. Repeat for **Premium** plan → add as `STRIPE_PREMIUM_PRICE_ID`
 
-The webhook keeps user plan status in sync when subscriptions change.
+> Price IDs start with `price_`. Product IDs start with `prod_`. Always use the Price ID.
+
+**4c. Register the webhook**
+
+The webhook keeps user plan status in sync when Stripe subscription events happen.
 
 1. **Developers → Webhooks → + Add endpoint**
-2. Endpoint URL:
+2. **Endpoint URL:**
    ```
    https://<your-prod-railway-domain>/webhooks/stripe
    ```
-3. Events to select — click **+ Select events** and choose:
+3. Click **+ Select events** and choose all four:
    - `customer.subscription.created`
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
    - `invoice.payment_failed`
-4. Click **Add endpoint** → then click **Reveal** under **Signing secret**
-5. Copy the `whsec_...` value → add to Railway prod as `STRIPE_WEBHOOK_SECRET`
+4. Click **Add endpoint**
+5. On the webhook detail page → **Signing secret → Reveal**
+6. Copy the `whsec_...` value → add to Railway prod as `STRIPE_WEBHOOK_SECRET`
 
-> The webhook secret must match exactly. If it is wrong, all subscription events will fail silently and user plans won't update.
+> The webhook secret must be exact. A mismatch causes all subscription events to silently fail — user plans will not update after payment.
 
-**4d. Set up the Customer Portal**
+**4d. Enable the Customer Portal**
 
-1. Stripe Dashboard → **Settings → Billing → Customer portal**
-2. Enable it and configure which features users can manage (cancel, upgrade, downgrade)
-3. Save settings — no extra keys needed, it uses your `STRIPE_SECRET_KEY`
+1. **Settings → Billing → Customer portal**
+2. Enable it, configure allowed actions (cancel, update payment method)
+3. Save — no extra keys needed, it uses your `STRIPE_SECRET_KEY`
 
 ---
 
 ### Step 5 — Google Cloud Console (OAuth for Google Sign-in)
 
-Your current OAuth client has the dev extension's redirect URI. After the Chrome Web Store publishes your extension (Step 6), you get a permanent extension ID. Update OAuth at that point.
+The Google OAuth client needs to know your **production extension's redirect URI**. This URI includes the extension ID, which you only get after publishing on the Chrome Web Store (Step 6). Do this step **after** Step 6.
 
 1. [console.cloud.google.com](https://console.cloud.google.com) → **APIs & Services → Credentials**
-2. Click your **Web application** OAuth 2.0 client
-3. Under **Authorized redirect URIs**, add:
+2. Click your existing **Web application** OAuth 2.0 client
+3. Under **Authorized redirect URIs** → **+ Add URI**:
    ```
    https://<PRODUCTION_EXTENSION_ID>.chromiumapp.org/
    ```
-4. Keep the dev redirect URI — having both is fine
+4. Keep the dev redirect URI alongside it — having both is fine
 5. Click **Save**
-
-> Do this step **after** Step 6, once you have the permanent production extension ID.
+6. The **Client ID** stays the same — copy it for `extension/.env.production` as `VITE_GOOGLE_OAUTH_CLIENT_ID`
 
 ---
 
 ### Step 6 — Chrome Extension (Build & Publish)
 
-**6a. Create the production environment file**
+**6a. Create `extension/.env.production`**
 
-Create `extension/.env.production` with these values:
+This file does not exist yet. Create it at `extension/.env.production` with values from the steps above:
 
 ```env
-# Backend — point to your production Railway service
+# ─── Backend ─────────────────────────────────────────────
+# Your production Railway domain from Step 3a
 VITE_API_URL=https://<your-prod-railway-domain>
 
-# Firebase — same values as dev (same Firebase project)
-VITE_FIREBASE_API_KEY=AIzaSyDQ_BJ--LdctIGiHzuFYw9apYVx7rKn5d8
-VITE_FIREBASE_AUTH_DOMAIN=smart-summify-ai.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=smart-summify-ai
-VITE_FIREBASE_STORAGE_BUCKET=smart-summify-ai.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=334071808161
-VITE_FIREBASE_APP_ID=1:334071808161:web:00bac499ec847a70e830e0
+# ─── Firebase (production project from Step 1c) ──────────
+VITE_FIREBASE_API_KEY=<from Step 1c>
+VITE_FIREBASE_AUTH_DOMAIN=<your-prod-project>.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=<your-prod-project-id>
+VITE_FIREBASE_STORAGE_BUCKET=<your-prod-project>.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=<from Step 1c>
+VITE_FIREBASE_APP_ID=<from Step 1c>
 
-# Google OAuth — same client ID as dev
-VITE_GOOGLE_OAUTH_CLIENT_ID=334071808161-uuid0roqgqjldhdr6ar50hgilb0ff5b2.apps.googleusercontent.com
+# ─── Google OAuth (from Step 5) ──────────────────────────
+VITE_GOOGLE_OAUTH_CLIENT_ID=<same client ID as dev>.apps.googleusercontent.com
 
-# Upgrade URL — point to production backend
+# ─── Upgrade URL ─────────────────────────────────────────
 VITE_UPGRADE_URL=https://<your-prod-railway-domain>/upgrade
 ```
 
-**6b. Update `manifest.json` before publishing**
+> All `VITE_` values are compiled into the extension bundle at build time. Anyone who unpacks the `.crx` can see them — never put secret backend keys here.
 
-In `extension/public/manifest.json`, remove the localhost host permission:
+**6b. Update `extension/public/manifest.json` for production**
+
+Remove the `localhost` and development Railway entries from `host_permissions`. The production manifest should only contain your production backend:
 
 ```json
 "host_permissions": [
-  "https://smart-summify-ai-production.up.railway.app/*"
+  "https://<your-prod-railway-domain>/*"
 ]
-```
-
-Remove this line (only needed for local dev):
-```
-"http://localhost:3001/*",
-```
-
-Also remove the development Railway URL if you no longer need it:
-```
-"https://smart-summify-ai-development.up.railway.app/*"
 ```
 
 **6c. Build the production extension**
@@ -225,26 +295,31 @@ cd extension
 npm run build
 ```
 
-This runs `vite build --mode production` and reads `.env.production`. The output is in `extension/dist/`.
+This runs `vite build --mode production`, reads `extension/.env.production`, and outputs to `extension/dist/`.
+Verify the build succeeded — you should see no errors and the `dist/` folder should be populated.
 
 **6d. Zip and submit to Chrome Web Store**
 
-1. Zip the **contents** of `extension/dist/` (not the dist folder itself — the files inside it)
-   ```
-   # On Windows, select all files inside dist/ → right-click → Send to → Compressed folder
-   ```
-2. Go to [chrome.google.com/webstore/devconsole](https://chrome.google.com/webstore/devconsole)
-3. **+ New item** → upload the zip
-4. Fill in the store listing: description, screenshots, category (Productivity), privacy policy URL
-5. Submit for review (Google typically takes 1–7 days)
+1. Open `extension/dist/` in File Explorer
+2. Select **all files inside** `dist/` (Ctrl+A) — do not select the `dist/` folder itself
+3. Right-click → **Send to → Compressed (zipped) folder**
+4. Go to [chrome.google.com/webstore/devconsole](https://chrome.google.com/webstore/devconsole)
+5. **+ New item** → upload the zip
+6. Fill in the store listing:
+   - Description, category (Productivity), screenshots (at least 1 required), small promotional tile
+   - Privacy policy URL (required — host a simple one on any public URL)
+7. **Submit for review** — Google typically takes 1–7 business days
 
 **6e. After Chrome Web Store approval**
 
-1. Copy your extension's permanent ID from the Chrome Web Store listing URL
-2. Add `CHROME_EXTENSION_ID=<that ID>` to Railway production env vars
-3. Add the redirect URI to Google Cloud Console (Step 5)
-4. Update `extension/.env.production` with the new production backend domain if it changed
-5. Run `npm run build` again and upload the updated zip to the Chrome Web Store (as an update)
+Once approved, the extension gets a **permanent ID** that never changes.
+
+1. Find the extension ID on your Chrome Web Store developer console listing page (32-character string in the URL or listed under the extension)
+2. Add to Railway prod env vars: `CHROME_EXTENSION_ID=<that ID>`
+3. Complete Step 5 — add the redirect URI to Google Cloud Console using this ID
+4. Update `extension/.env.production` if anything changed
+5. Rebuild: `npm run build`
+6. Upload the new zip to Chrome Web Store as an **update**
 
 ---
 
@@ -252,50 +327,48 @@ This runs `vite build --mode production` and reads `.env.production`. The output
 
 ### Backend (Railway)
 
-| Variable | Required | Dev value | Production value |
-|---|---|---|---|
-| `NODE_ENV` | Yes | `development` | `production` |
-| `PORT` | Yes | `3001` | `3001` |
-| `FIREBASE_PROJECT_ID` | Yes | same | same |
-| `FIREBASE_CLIENT_EMAIL` | Yes | same | same |
-| `FIREBASE_PRIVATE_KEY` | Yes | same | same |
-| `SUPABASE_URL` | Yes | dev project URL | prod project URL (or same) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | dev key | prod key (or same) |
-| `GEMINI_API_KEY` | Yes | test key | production key |
-| `STRIPE_SECRET_KEY` | Yes | `sk_test_...` | `sk_live_...` |
-| `STRIPE_WEBHOOK_SECRET` | Yes | `whsec_...` (test) | `whsec_...` (live) |
-| `STRIPE_BASIC_PRICE_ID` | Yes | `price_...` (test) | `price_...` (live) |
-| `STRIPE_PREMIUM_PRICE_ID` | Yes | `price_...` (test) | `price_...` (live) |
-| `CHROME_EXTENSION_ID` | No | unset | your CWS extension ID |
-| `BACKEND_URL` | No | unset | unset (Railway provides it) |
+| Variable | Dev value | Production value |
+|---|---|---|
+| `NODE_ENV` | `development` | `production` |
+| `PORT` | `3001` | `3001` |
+| `FIREBASE_PROJECT_ID` | dev Firebase project ID | **prod Firebase project ID** (Step 1d) |
+| `FIREBASE_CLIENT_EMAIL` | dev service account email | **prod service account email** (Step 1d) |
+| `FIREBASE_PRIVATE_KEY` | dev private key | **prod private key** (Step 1d) |
+| `SUPABASE_URL` | dev Supabase URL | **prod Supabase URL** (Step 2d) |
+| `SUPABASE_SERVICE_ROLE_KEY` | dev service role key | **prod service role key** (Step 2d) |
+| `GEMINI_API_KEY` | dev API key | **new prod API key** (aistudio.google.com) |
+| `STRIPE_SECRET_KEY` | `sk_test_...` | `sk_live_...` (Step 4a) |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_...` (test) | `whsec_...` (live) (Step 4c) |
+| `STRIPE_BASIC_PRICE_ID` | `price_...` (test) | `price_...` (live) (Step 4b) |
+| `STRIPE_PREMIUM_PRICE_ID` | `price_...` (test) | `price_...` (live) (Step 4b) |
+| `CHROME_EXTENSION_ID` | unset | prod Chrome Web Store extension ID (Step 6e) |
+| `BACKEND_URL` | unset | unset (Railway injects it automatically) |
 
-### Extension (baked into the build via `.env.production`)
+### Extension (compiled into the build)
 
-| Variable | Value |
-|---|---|
-| `VITE_API_URL` | Your production Railway backend URL |
-| `VITE_FIREBASE_API_KEY` | Same as dev |
-| `VITE_FIREBASE_AUTH_DOMAIN` | Same as dev |
-| `VITE_FIREBASE_PROJECT_ID` | Same as dev |
-| `VITE_FIREBASE_STORAGE_BUCKET` | Same as dev |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Same as dev |
-| `VITE_FIREBASE_APP_ID` | Same as dev |
-| `VITE_GOOGLE_OAUTH_CLIENT_ID` | Same as dev |
-| `VITE_UPGRADE_URL` | `<prod-backend-url>/upgrade` |
-
-> All `VITE_` variables are compiled into the extension bundle at build time. They are visible to anyone who unpacks the `.crx` file. Never put secret keys in `VITE_` variables.
+| Variable | Dev (`.env.development`) | Production (`.env.production`) |
+|---|---|---|
+| `VITE_API_URL` | Dev Railway backend URL | **Prod Railway backend URL** |
+| `VITE_FIREBASE_API_KEY` | Dev Firebase key | **Prod Firebase key** |
+| `VITE_FIREBASE_AUTH_DOMAIN` | `dev-project.firebaseapp.com` | **`prod-project.firebaseapp.com`** |
+| `VITE_FIREBASE_PROJECT_ID` | Dev project ID | **Prod project ID** |
+| `VITE_FIREBASE_STORAGE_BUCKET` | Dev bucket | **Prod bucket** |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Dev sender ID | **Prod sender ID** |
+| `VITE_FIREBASE_APP_ID` | Dev app ID | **Prod app ID** |
+| `VITE_GOOGLE_OAUTH_CLIENT_ID` | Google OAuth client ID | Same client ID (add prod redirect URI in Step 5) |
+| `VITE_UPGRADE_URL` | Dev backend `/upgrade` | **Prod backend `/upgrade`** |
 
 ---
 
-## Build Commands
+## Build Commands (Extension)
 
-| Command | Mode | Reads env file | Use when |
+| Command | Mode | Reads | Use when |
 |---|---|---|---|
-| `npm run dev` | development | `.env.development` | Local development (watch mode) |
+| `npm run dev` | development | `.env.development` | Local development — auto-rebuilds on save |
 | `npm run dev:once` | development | `.env.development` | Single build for Chrome testing |
-| `npm run build` | production | `.env.production` | Chrome Web Store submission |
+| `npm run build` | production | `.env.production` | Chrome Web Store submission only |
 
-> Always use `npm run dev:once` during testing. Use `npm run build` only for publishing.
+> Always use `npm run dev:once` during testing. `npm run build` is only for publishing.
 
 ---
 
@@ -316,26 +389,50 @@ This runs `vite build --mode production` and reads `.env.production`. The output
 
 ## Production Launch Checklist
 
-### Services
-- [ ] Firebase: production Railway domain added to Authorized Domains
-- [ ] Supabase: URL and service_role key confirmed, `exports` storage bucket is private
-- [ ] Railway: production service created, all env vars set, `NODE_ENV=production`
-- [ ] Stripe: switched to Live mode, live products and prices created, webhook registered
-- [ ] Google Cloud Console: production extension redirect URI added (after CWS approval)
+Work through these in order — each section depends on the one above it.
 
-### Extension
-- [ ] `extension/.env.production` created with prod backend URL
-- [ ] `localhost` removed from `manifest.json` host_permissions
-- [ ] `npm run build` runs successfully (reads `.env.production`)
-- [ ] `dist/` contents zipped and uploaded to Chrome Web Store
+### 1. Firebase (prod project)
+- [ ] New Firebase project created (`smart-summify-ai-prod`)
+- [ ] Google and Email/Password authentication enabled
+- [ ] Web app registered — client config values copied
+- [ ] Service account key generated — Admin SDK values copied
+- [ ] Authorized domain added (after Railway deploy in step 3)
+
+### 2. Supabase (prod project)
+- [ ] New Supabase project created
+- [ ] Schema SQL from `docs/SETUP.md` executed in SQL Editor
+- [ ] `exports` storage bucket created and set to **private**
+- [ ] Project URL and service_role key copied
+
+### 3. Railway (prod service)
+- [ ] New production service created, Root Directory set to `backend`
+- [ ] All environment variables set (Firebase, Supabase, Gemini, `NODE_ENV=production`)
+- [ ] Service deployed successfully — public domain copied
+- [ ] Firebase authorized domain updated with Railway domain
+
+### 4. Stripe (live mode)
+- [ ] Switched to Live mode
+- [ ] Basic and Premium products + prices created in live mode
+- [ ] `sk_live_...` secret key added to Railway
+- [ ] Price IDs (`price_...`) added to Railway
+- [ ] Webhook registered for the prod Railway URL
+- [ ] `whsec_...` webhook secret added to Railway
+- [ ] Customer Portal configured
+
+### 5. Extension build
+- [ ] `extension/.env.production` created with all prod values
+- [ ] `localhost` and dev Railway URL removed from `manifest.json` host_permissions
+- [ ] `npm run build` completes without errors
+- [ ] `dist/` contents zipped (contents, not the folder)
+- [ ] Uploaded to Chrome Web Store developer console
 - [ ] Store listing complete (description, screenshots, privacy policy)
 - [ ] Submitted for review
 
-### Post-approval
-- [ ] Production extension ID copied from Chrome Web Store
+### 6. Post-approval (after Chrome Web Store approves)
+- [ ] Production extension ID copied
 - [ ] `CHROME_EXTENSION_ID` added to Railway prod env vars
-- [ ] Redirect URI added to Google Cloud Console OAuth client
-- [ ] Final `npm run build` + CWS update if any files changed
+- [ ] Prod redirect URI (`https://<PROD_ID>.chromiumapp.org/`) added to Google Cloud Console → Step 5
+- [ ] Final `npm run build` + new zip uploaded to Chrome Web Store as update
 
 ---
 
@@ -358,3 +455,4 @@ npm run dev:once            # reads .env.development, outputs to dist/
 ```
 
 Refer to `docs/SETUP.md` for the full Supabase schema SQL and detailed local setup instructions.
+Refer to `docs/API.md` for the complete backend API endpoint reference.
