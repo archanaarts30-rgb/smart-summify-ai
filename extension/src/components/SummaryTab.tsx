@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useStore, GUEST_FREE_LIMIT, UsageStats } from '../store';
+import { useStore, GUEST_FREE_LIMIT } from '../store';
 import {
   summarizeContent, summarizeContentGuest, summarizeFile,
   subscribe, exportSummary, generateSocialImages, generateSlides, sendChatMessage,
@@ -97,14 +97,12 @@ function mdToHtml(md: string): string {
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const SIZE_OPTIONS = [
-  { id: 'small',  label: 'Short',  desc: '3–5 sentences' },
-  { id: 'medium', label: 'Medium', desc: '2–3 paragraphs' },
-  { id: 'large',  label: 'Full',   desc: 'Detailed breakdown' },
-] as const;
+const SIZE_STEPS = ['small', 'medium', 'large'] as const;
+const SIZE_LABELS: Record<string, string> = { small: 'Short', medium: 'Medium', large: 'Full' };
+const SIZE_DESCS:  Record<string, string> = { small: '3–5 sentences', medium: '2–3 paragraphs', large: 'Detailed breakdown' };
 
 const LANGUAGES = [
-  { value: 'auto',       label: '🌐 Auto (same as source)' },
+  { value: 'auto',       label: '🌐 Auto' },
   { value: 'English',    label: '🇺🇸 English' },
   { value: 'Spanish',    label: '🇪🇸 Spanish' },
   { value: 'French',     label: '🇫🇷 French' },
@@ -429,30 +427,33 @@ export default function SummaryTab() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-          ROW 2: Size picker (ALWAYS VISIBLE)
+          ROW 2: Summary length slider (ALWAYS VISIBLE)
       ══════════════════════════════════════════════════════════════ */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-        {SIZE_OPTIONS.map(s => {
-          const locked = !allowedSizes.includes(s.id);
-          return (
-            <button
-              key={s.id}
-              onClick={() => !locked && setSummarySize(s.id)}
-              title={locked ? 'Upgrade to unlock' : s.desc}
-              style={{
-                flex: 1, padding: '7px 4px', borderRadius: 'var(--radius)',
-                fontSize: 12, fontWeight: 500,
-                background: summarySize === s.id ? 'var(--accent)' : 'var(--bg2)',
-                color: summarySize === s.id ? '#fff' : locked ? 'var(--text2)' : 'var(--text)',
-                border: '1px solid ' + (summarySize === s.id ? 'var(--accent)' : 'var(--border)'),
-                cursor: locked ? 'not-allowed' : 'pointer',
-                opacity: locked ? 0.5 : 1,
-              }}
-            >
-              {s.label} {locked ? '🔒' : ''}
-            </button>
-          );
-        })}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+          <span style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 500 }}>Summary length</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)' }}>
+            {SIZE_LABELS[summarySize]}
+            {plan === 'free' && summarySize !== 'small' && ' 🔒'}
+            <span style={{ fontWeight: 400, color: 'var(--text2)', marginLeft: 5 }}>
+              {SIZE_DESCS[summarySize]}
+            </span>
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0} max={2} step={1}
+          value={plan === 'free' ? 0 : SIZE_STEPS.indexOf(summarySize as typeof SIZE_STEPS[number])}
+          disabled={plan === 'free'}
+          onChange={e => { if (plan !== 'free') setSummarySize(SIZE_STEPS[+e.target.value]); }}
+          title={plan === 'free' ? 'Upgrade to unlock longer summaries' : SIZE_DESCS[summarySize]}
+          style={{ width: '100%', cursor: plan === 'free' ? 'not-allowed' : 'pointer', accentColor: 'var(--accent)', opacity: plan === 'free' ? 0.55 : 1 }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text2)', marginTop: 3 }}>
+          <span>Short</span>
+          <span>Medium{plan === 'free' ? ' 🔒' : ''}</span>
+          <span>Full{plan === 'free' ? ' 🔒' : ''}</span>
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
@@ -474,10 +475,10 @@ export default function SummaryTab() {
         <button
           onClick={summarizePage}
           disabled={loading}
-          className="btn-ghost"
-          style={{ width: '100%', padding: '8px', fontSize: 12, marginBottom: 10 }}
+          className="btn"
+          style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 700, marginBottom: 14 }}
         >
-          ↺ Re-summarize this page
+          {loading ? 'Summarizing...' : '↺ Re-summarize'}
         </button>
       )}
 
@@ -708,13 +709,13 @@ export default function SummaryTab() {
             {/* Font size group */}
             <button onClick={decreaseFontSize}
               className="btn-ghost" title="Decrease font size"
-              style={{ ...icoBtnStyle, fontSize: 13, fontWeight: 800, letterSpacing: '-0.5px', minWidth: 30, color: 'var(--text)' }}>
-              A<span style={{ fontSize: 10, verticalAlign: 'middle', marginLeft: 1 }}>−</span>
+              style={{ ...icoBtnStyle, fontSize: 13, fontWeight: 400, minWidth: 30, color: 'var(--text)' }}>
+              A−
             </button>
             <button onClick={increaseFontSize}
               className="btn-ghost" title="Increase font size"
-              style={{ ...icoBtnStyle, fontSize: 13, fontWeight: 800, letterSpacing: '-0.5px', minWidth: 30, color: 'var(--text)' }}>
-              A<span style={{ fontSize: 11, verticalAlign: 'middle', marginLeft: 1 }}>+</span>
+              style={{ ...icoBtnStyle, fontSize: 13, fontWeight: 400, minWidth: 30, color: 'var(--text)' }}>
+              A+
             </button>
 
             {/* Divider */}
@@ -813,7 +814,7 @@ export default function SummaryTab() {
                 }}
               >
                 <Icons.Chat />
-                {showChat ? 'Close Chat' : '💬 Ask AI about this'}
+                {showChat ? 'Close chat' : 'Ask a question'}
               </button>
             ) : (
               <button
@@ -826,17 +827,11 @@ export default function SummaryTab() {
                 }}
               >
                 <Icons.Chat />
-                💬 Ask AI about this — <span style={{ color: '#d97706' }}>Upgrade to Basic</span>
+                Ask a question — <span style={{ color: '#d97706' }}>Upgrade to Basic</span>
               </button>
             )}
           </div>
 
-          {/* ── Usage bar (after summary, logged-in) ── */}
-          {!isGuest && usage && (
-            <div style={{ marginBottom: 8 }}>
-              <UsageBar usage={usage} plan={plan} />
-            </div>
-          )}
 
           {/* ═══════════════════════════════════════════════════════
               INLINE CHAT
@@ -924,12 +919,6 @@ export default function SummaryTab() {
         </div>
       )}
 
-      {/* ── Usage bar (before summary, logged-in) ── */}
-      {!isGuest && usage && !currentSummary && !loading && (
-        <div style={{ marginTop: 4 }}>
-          <UsageBar usage={usage} plan={plan} />
-        </div>
-      )}
 
       {/* ── Guest usage counter ── */}
       {isGuest && (
@@ -983,38 +972,3 @@ const icoBtnStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
-// ── Usage bar component ───────────────────────────────────────────────────────
-function UsageBar({ usage, plan }: { usage: UsageStats; plan: string }) {
-  const isUnlimited = usage.dailyLimit === null;
-  const pct = isUnlimited ? 100 : Math.min(100, Math.round((usage.summariesToday / usage.dailyLimit!) * 100));
-  const remaining = isUnlimited ? null : (usage.dailyLimit! - usage.summariesToday);
-  const barColor = isUnlimited ? '#16a34a' : pct >= 90 ? '#dc2626' : pct >= 65 ? '#d97706' : '#6d4af7';
-  const monthName = new Date().toLocaleString('default', { month: 'long' });
-
-  return (
-    <div style={{
-      padding: '8px 11px', background: 'var(--bg2)',
-      borderRadius: 'var(--radius)', border: '1px solid var(--border)', fontSize: 11,
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <span style={{ fontWeight: 600, color: 'var(--text)' }}>
-          Today:&nbsp;<span style={{ color: barColor }}>{usage.summariesToday}{isUnlimited ? '' : ` / ${usage.dailyLimit}`}</span>
-        </span>
-        <span style={{ color: 'var(--text2)' }}>
-          {isUnlimited ? 'Unlimited' : remaining === 0
-            ? <span style={{ color: '#dc2626', fontWeight: 600 }}>Limit reached</span>
-            : `${remaining} left`}
-        </span>
-      </div>
-      {!isUnlimited && (
-        <div style={{ height: 3, borderRadius: 'var(--radius-full)', background: 'var(--border)', marginBottom: 5, overflow: 'hidden' }}>
-          <div style={{ height: '100%', borderRadius: 'var(--radius-full)', width: `${pct}%`, background: barColor, transition: 'width 0.4s ease' }} />
-        </div>
-      )}
-      <div style={{ display: 'flex', gap: 12, color: 'var(--text2)' }}>
-        <span>{monthName}: <strong style={{ color: 'var(--text)' }}>{usage.summariesThisMonth}</strong></span>
-        <span>All time: <strong style={{ color: 'var(--text)' }}>{usage.totalSummaries}</strong></span>
-      </div>
-    </div>
-  );
-}

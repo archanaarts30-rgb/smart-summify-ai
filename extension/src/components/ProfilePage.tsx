@@ -259,18 +259,19 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
             <button
               onClick={handleSaveProfile}
               disabled={saving}
               className="btn"
-              style={{ flex: 1 }}
+              style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 700 }}
             >
               {saving ? 'Saving...' : 'Save changes'}
             </button>
             {saveMsg && (
               <span style={{
-                fontSize: 12, color: saveMsg === 'Saved!' ? 'var(--success)' : 'var(--danger)',
+                fontSize: 12, textAlign: 'center',
+                color: saveMsg === 'Saved!' ? 'var(--success)' : 'var(--danger)',
                 fontWeight: 600,
               }}>
                 {saveMsg}

@@ -72,18 +72,30 @@ export default function Header({ onSignInClick, onAvatarClick }: HeaderProps) {
               {user.plan}
             </button>
 
-            {/* Usage stats — today count */}
+            {/* Usage stats — today / month / all-time */}
             {usage && (
               <span style={{
                 fontSize: 10, color: 'var(--text2)', fontWeight: 500,
                 borderLeft: '1px solid var(--border)', paddingLeft: 7,
+                display: 'flex', gap: 5, alignItems: 'center',
               }}>
-                {usage.dailyLimit === null
-                  ? <><strong style={{ color: 'var(--text)' }}>{usage.summariesToday}</strong> today</>
-                  : <><strong style={{ color: usage.summariesToday >= usage.dailyLimit ? '#dc2626' : 'var(--text)' }}>
-                      {usage.summariesToday}/{usage.dailyLimit}
-                    </strong> today</>
-                }
+                <span title="Today">
+                  {usage.dailyLimit === null
+                    ? <strong style={{ color: 'var(--text)' }}>{usage.summariesToday}</strong>
+                    : <strong style={{ color: usage.summariesToday >= usage.dailyLimit ? '#dc2626' : 'var(--text)' }}>
+                        {usage.summariesToday}/{usage.dailyLimit}
+                      </strong>
+                  }
+                  {' '}today
+                </span>
+                <span style={{ color: 'var(--border)' }}>·</span>
+                <span title="This month">
+                  <strong style={{ color: 'var(--text)' }}>{usage.summariesThisMonth}</strong> mo
+                </span>
+                <span style={{ color: 'var(--border)' }}>·</span>
+                <span title="All time">
+                  <strong style={{ color: 'var(--text)' }}>{usage.totalSummaries}</strong> total
+                </span>
               </span>
             )}
           </>
