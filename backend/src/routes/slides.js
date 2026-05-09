@@ -42,8 +42,24 @@ SUMMARY:
 ${summary.summary_text}`;
 
     const result = await model.generateContent(prompt);
-    const raw = result.response.text().replace(/```json|```/g, '').trim();
-    const deck = JSON.parse(raw);
+    const responseText = result.response.text();
+
+    // Extract JSON robustly — Gemini may wrap it in markdown fences
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('Slides: no JSON in Gemini response:', responseText.slice(0, 300));
+      return res.status(500).json({ error: 'AI did not return valid slide data. Please try again.' });
+    }
+    let deck;
+    try {
+      deck = JSON.parse(jsonMatch[0]);
+    } catch (parseErr) {
+      console.error('Slides: JSON parse failed:', jsonMatch[0].slice(0, 300));
+      return res.status(500).json({ error: 'Failed to parse slide structure from AI. Please try again.' });
+    }
+    if (!deck.slides || !Array.isArray(deck.slides)) {
+      return res.status(500).json({ error: 'AI returned unexpected slide format. Please try again.' });
+    }
 
     // ─── Build PPTX ───────────────────────────────────────────
     const pptx = new PptxGenJS();
@@ -120,7 +136,8 @@ ${summary.summary_text}`;
     res.json({ downloadUrl: urlData.signedUrl, slideCount: deck.slides.length + 1 });
   } catch (err) {
     console.error('Slides error:', err);
-    res.status(500).json({ error: 'Slide generation failed.' });
+    const msg = err?.message || 'Slide generation failed. Please try again.';
+    res.status(500).json({ error: msg });
   }
 });
 

@@ -30,7 +30,13 @@ export default function Header({ onSignInClick, onAvatarClick }: HeaderProps) {
     }}>
       {/* Logo + user avatar + plan badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--accent)' }}>Smart Summify AI</span>
+        <span style={{
+          fontWeight: 800, fontSize: 15,
+          background: 'linear-gradient(135deg, #6d4af7 0%, #9580ff 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+        }}>Smart Summify AI</span>
         {user && (
           <>
             {/* Clickable avatar — opens profile page */}

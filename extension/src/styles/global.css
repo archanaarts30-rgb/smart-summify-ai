@@ -86,6 +86,56 @@ input, textarea, select {
   border-radius: var(--radius) !important;
 }
 
+/* ── Modern range slider ─────────────────────────────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+  border-radius: 99px !important;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2.5px solid var(--bg);
+  box-shadow: 0 0 0 2px var(--accent), 0 2px 6px rgba(109,74,247,0.25);
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 5px rgba(109,74,247,0.18), 0 2px 8px rgba(109,74,247,0.3);
+  transform: scale(1.1);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2.5px solid var(--bg);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 99px;
+  background: var(--border);
+}
+input[type="range"]:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+input[type="range"]:disabled::-webkit-slider-thumb {
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 /* ── Tabs ────────────────────────────────────────────────────── */
 .tab-active {
   border-bottom: 2px solid var(--accent);

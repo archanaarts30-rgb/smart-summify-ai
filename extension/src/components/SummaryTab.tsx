@@ -447,7 +447,7 @@ export default function SummaryTab() {
           disabled={plan === 'free'}
           onChange={e => { if (plan !== 'free') setSummarySize(SIZE_STEPS[+e.target.value]); }}
           title={plan === 'free' ? 'Upgrade to unlock longer summaries' : SIZE_DESCS[summarySize]}
-          style={{ width: '100%', cursor: plan === 'free' ? 'not-allowed' : 'pointer', accentColor: 'var(--accent)', opacity: plan === 'free' ? 0.55 : 1 }}
+          style={{ width: '100%', opacity: plan === 'free' ? 0.55 : 1 }}
         />
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text2)', marginTop: 3 }}>
           <span>Short</span>
@@ -586,7 +586,7 @@ export default function SummaryTab() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
             <span style={{ color: '#7c3aed', display: 'flex' }}><Icons.Slides /></span>
-            <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 12 }}>Slides</span>
+            <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 12 }}>PPT Slides</span>
             {!canSlides && (
               <span style={{
                 fontSize: 9, padding: '1px 5px', borderRadius: 99, fontWeight: 700,

@@ -48,12 +48,9 @@ export default function StatsTab() {
   return (
     <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-      <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 2px' }}>
+      <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 6px' }}>
         📊 Your Reading Stats
       </h2>
-      <p style={{ fontSize: 12, color: 'var(--text2)', margin: '0 0 6px' }}>
-        A summary of every article and document you've read using Smart Summify AI.
-      </p>
 
       {/* ── Today ── */}
       <div style={{
