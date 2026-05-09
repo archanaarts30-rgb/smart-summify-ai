@@ -102,21 +102,21 @@ const SIZE_LABELS: Record<string, string> = { small: 'Short', medium: 'Medium', 
 const SIZE_DESCS:  Record<string, string> = { small: '3–5 sentences', medium: '2–3 paragraphs', large: 'Detailed breakdown' };
 
 const LANGUAGES = [
-  { value: 'auto',       label: '🌐 Auto' },
-  { value: 'English',    label: '🇺🇸 English' },
-  { value: 'Spanish',    label: '🇪🇸 Spanish' },
-  { value: 'French',     label: '🇫🇷 French' },
-  { value: 'German',     label: '🇩🇪 German' },
-  { value: 'Portuguese', label: '🇧🇷 Portuguese' },
-  { value: 'Italian',    label: '🇮🇹 Italian' },
-  { value: 'Dutch',      label: '🇳🇱 Dutch' },
-  { value: 'Russian',    label: '🇷🇺 Russian' },
-  { value: 'Chinese (Simplified)', label: '🇨🇳 Chinese' },
-  { value: 'Japanese',   label: '🇯🇵 Japanese' },
-  { value: 'Korean',     label: '🇰🇷 Korean' },
-  { value: 'Arabic',     label: '🇸🇦 Arabic' },
-  { value: 'Hindi',      label: '🇮🇳 Hindi' },
-  { value: 'Turkish',    label: '🇹🇷 Turkish' },
+  { value: 'auto',                 label: 'Auto' },
+  { value: 'English',              label: 'English' },
+  { value: 'Spanish',              label: 'Spanish' },
+  { value: 'French',               label: 'French' },
+  { value: 'German',               label: 'German' },
+  { value: 'Portuguese',           label: 'Portuguese' },
+  { value: 'Italian',              label: 'Italian' },
+  { value: 'Dutch',                label: 'Dutch' },
+  { value: 'Russian',              label: 'Russian' },
+  { value: 'Chinese (Simplified)', label: 'Chinese' },
+  { value: 'Japanese',             label: 'Japanese' },
+  { value: 'Korean',               label: 'Korean' },
+  { value: 'Arabic',               label: 'Arabic' },
+  { value: 'Hindi',                label: 'Hindi' },
+  { value: 'Turkish',              label: 'Turkish' },
 ];
 
 const THEME_COLORS: Record<string, string> = {
@@ -580,11 +580,11 @@ export default function SummaryTab() {
 
         {/* ─ Slides panel ─ */}
         <div style={{
-          padding: '11px', borderRadius: 'var(--radius-lg)', fontSize: 12,
+          padding: '9px', borderRadius: 'var(--radius-lg)', fontSize: 12,
           border: `1px solid ${canSlides ? 'rgba(124,58,237,0.35)' : 'var(--border)'}`,
           background: canSlides ? 'rgba(124,58,237,0.05)' : 'var(--bg2)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 7 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
             <span style={{ color: '#7c3aed', display: 'flex' }}><Icons.Slides /></span>
             <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 12 }}>Slides</span>
             {!canSlides && (
@@ -600,31 +600,31 @@ export default function SummaryTab() {
             </p>
           ) : !canSlides ? (
             <button onClick={handleUpgrade}
-              style={{ width: '100%', fontSize: 11, padding: '5px 8px', borderRadius: 'var(--radius)', border: '1px solid #7c3aed', background: 'transparent', color: '#7c3aed', cursor: 'pointer', fontWeight: 600 }}>
+              style={{ width: '100%', fontSize: 11, padding: '4px 8px', borderRadius: 'var(--radius)', border: '1px solid #7c3aed', background: 'transparent', color: '#7c3aed', cursor: 'pointer', fontWeight: 600 }}>
               Upgrade to unlock
             </button>
           ) : (
             <button onClick={handleSlides} disabled={slidesLoading} className="btn"
-              style={{ width: '100%', fontSize: 11, padding: '6px' }}>
+              style={{ width: '100%', fontSize: 11, padding: '5px' }}>
               {slidesLoading ? 'Building...' : '⬇ Generate PPTX'}
             </button>
           )}
-          {slidesError && <p style={{ fontSize: 10, color: 'var(--danger)', marginTop: 4, margin: '4px 0 0' }}>{slidesError}</p>}
+          {slidesError && <p style={{ fontSize: 10, color: 'var(--danger)', margin: '4px 0 0' }}>{slidesError}</p>}
         </div>
 
-        {/* ─ Social Cards panel ─ */}
+        {/* ─ Social Posts panel ─ */}
         <div style={{
-          padding: '11px', borderRadius: 'var(--radius-lg)', fontSize: 12,
-          border: `1px solid ${maxSocialImages > 0 ? 'rgba(217,119,6,0.35)' : 'var(--border)'}`,
-          background: maxSocialImages > 0 ? 'rgba(217,119,6,0.05)' : 'var(--bg2)',
+          padding: '9px', borderRadius: 'var(--radius-lg)', fontSize: 12,
+          border: `1px solid ${maxSocialImages > 0 ? 'rgba(124,58,237,0.35)' : 'var(--border)'}`,
+          background: maxSocialImages > 0 ? 'rgba(124,58,237,0.05)' : 'var(--bg2)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 7 }}>
-            <span style={{ color: '#d97706', display: 'flex' }}><Icons.Image /></span>
-            <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 12 }}>Social</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+            <span style={{ color: '#7c3aed', display: 'flex' }}><Icons.Image /></span>
+            <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 12 }}>Social Posts</span>
             {maxSocialImages === 0 && (
               <span style={{
                 fontSize: 9, padding: '1px 5px', borderRadius: 99, fontWeight: 700,
-                background: 'rgba(217,119,6,0.15)', color: '#d97706', marginLeft: 'auto',
+                background: 'rgba(124,58,237,0.15)', color: '#7c3aed', marginLeft: 'auto',
               }}>BASIC+</span>
             )}
           </div>
@@ -634,7 +634,7 @@ export default function SummaryTab() {
             </p>
           ) : maxSocialImages === 0 ? (
             <button onClick={handleUpgrade}
-              style={{ width: '100%', fontSize: 11, padding: '5px 8px', borderRadius: 'var(--radius)', border: '1px solid #d97706', background: 'transparent', color: '#d97706', cursor: 'pointer', fontWeight: 600 }}>
+              style={{ width: '100%', fontSize: 11, padding: '4px 8px', borderRadius: 'var(--radius)', border: '1px solid #7c3aed', background: 'transparent', color: '#7c3aed', cursor: 'pointer', fontWeight: 600 }}>
               Upgrade to unlock
             </button>
           ) : (
@@ -643,20 +643,20 @@ export default function SummaryTab() {
                 {[2, 3, 4, 5].filter(n => n <= maxSocialImages).map(n => (
                   <button key={n} onClick={() => setSocialCount(n)} style={{
                     width: 22, height: 22, borderRadius: 5, fontSize: 11, fontWeight: 600,
-                    background: socialCount === n ? '#d97706' : 'var(--bg)',
+                    background: socialCount === n ? '#7c3aed' : 'var(--bg)',
                     color: socialCount === n ? '#fff' : 'var(--text)',
-                    border: '1px solid ' + (socialCount === n ? '#d97706' : 'var(--border)'),
+                    border: '1px solid ' + (socialCount === n ? '#7c3aed' : 'var(--border)'),
                     cursor: 'pointer',
                   }}>{n}</button>
                 ))}
               </div>
               <button onClick={handleSocialImages} disabled={socialLoading} className="btn"
-                style={{ width: '100%', fontSize: 11, padding: '5px', background: '#d97706', borderColor: '#d97706' }}>
+                style={{ width: '100%', fontSize: 11, padding: '5px' }}>
                 {socialLoading ? '...' : 'Generate'}
               </button>
             </>
           )}
-          {socialError && <p style={{ fontSize: 10, color: 'var(--danger)', marginTop: 4, margin: '4px 0 0' }}>{socialError}</p>}
+          {socialError && <p style={{ fontSize: 10, color: 'var(--danger)', margin: '4px 0 0' }}>{socialError}</p>}
         </div>
       </div>
 

@@ -7,7 +7,7 @@ interface HeaderProps {
 }
 
 export default function Header({ onSignInClick, onAvatarClick }: HeaderProps) {
-  const { user, theme, toggleTheme, usage } = useStore();
+  const { user, theme, toggleTheme } = useStore();
 
   const planColors: Record<string, string> = {
     free: '#71717a',
@@ -30,7 +30,7 @@ export default function Header({ onSignInClick, onAvatarClick }: HeaderProps) {
     }}>
       {/* Logo + user avatar + plan badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--accent)' }}>Smart Summify</span>
+        <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--accent)' }}>Smart Summify AI</span>
         {user && (
           <>
             {/* Clickable avatar — opens profile page */}
@@ -72,32 +72,6 @@ export default function Header({ onSignInClick, onAvatarClick }: HeaderProps) {
               {user.plan}
             </button>
 
-            {/* Usage stats — today / month / all-time */}
-            {usage && (
-              <span style={{
-                fontSize: 10, color: 'var(--text2)', fontWeight: 500,
-                borderLeft: '1px solid var(--border)', paddingLeft: 7,
-                display: 'flex', gap: 5, alignItems: 'center',
-              }}>
-                <span title="Today">
-                  {usage.dailyLimit === null
-                    ? <strong style={{ color: 'var(--text)' }}>{usage.summariesToday}</strong>
-                    : <strong style={{ color: usage.summariesToday >= usage.dailyLimit ? '#dc2626' : 'var(--text)' }}>
-                        {usage.summariesToday}/{usage.dailyLimit}
-                      </strong>
-                  }
-                  {' '}today
-                </span>
-                <span style={{ color: 'var(--border)' }}>·</span>
-                <span title="This month">
-                  <strong style={{ color: 'var(--text)' }}>{usage.summariesThisMonth}</strong> mo
-                </span>
-                <span style={{ color: 'var(--border)' }}>·</span>
-                <span title="All time">
-                  <strong style={{ color: 'var(--text)' }}>{usage.totalSummaries}</strong> total
-                </span>
-              </span>
-            )}
           </>
         )}
       </div>

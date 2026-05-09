@@ -4,10 +4,11 @@ import { useStore } from '../store';
 import AuthScreen from '../components/AuthScreen';
 import SummaryTab from '../components/SummaryTab';
 import HistoryTab from '../components/HistoryTab';
+import StatsTab from '../components/StatsTab';
 import Header from '../components/Header';
 import ProfilePage from '../components/ProfilePage';
 
-type Tab = 'summary' | 'history';
+type Tab = 'summary' | 'history' | 'stats';
 type View = 'main' | 'profile';
 
 export default function App() {
@@ -59,6 +60,7 @@ export default function App() {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'summary', label: 'Summarize' },
     { id: 'history', label: 'History' },
+    { id: 'stats',   label: 'Stats' },
   ];
 
   return (
@@ -100,6 +102,7 @@ export default function App() {
           <div style={{ background: 'var(--bg)' }}>
             {tab === 'summary' && <SummaryTab />}
             {tab === 'history' && <HistoryTab />}
+            {tab === 'stats'   && <StatsTab />}
           </div>
         </>
       )}
