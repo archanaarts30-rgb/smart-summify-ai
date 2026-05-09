@@ -3,8 +3,6 @@ const PptxGenJS = require('pptxgenjs');
 const { authenticate, requireFeature } = require('../middleware/auth');
 const { getModel } = require('../config/gemini');
 const supabase = require('../config/supabase');
-const { v4: uuidv4 } = require('uuid');
-
 const router = express.Router();
 
 router.post('/', authenticate, requireFeature('slides'), async (req, res) => {
@@ -118,7 +116,8 @@ ${summary.summary_text}`;
 
     // ─── Export to buffer and upload to Supabase Storage ─────
     const pptxBuffer = await pptx.write({ outputType: 'nodebuffer' });
-    const filePath = `slides/${req.user.id}/${uuidv4()}.pptx`;
+    // Deterministic path: re-generating slides for the same summary replaces the file
+    const filePath = `slides/${req.user.id}/${summaryId}.pptx`;
 
     const { error: uploadError } = await supabase.storage
       .from('exports')

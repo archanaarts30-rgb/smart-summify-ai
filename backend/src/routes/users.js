@@ -53,13 +53,20 @@ router.get('/me', authenticate, async (req, res) => {
 // ─── Update display name ────────────────────────────────────────────
 router.patch('/me', authenticate, async (req, res) => {
   const { displayName } = req.body;
-  if (!displayName || displayName.trim().length < 2) {
+  if (!displayName || typeof displayName !== 'string') {
+    return res.status(400).json({ error: 'Display name is required.' });
+  }
+  const sanitized = displayName.trim().replace(/<[^>]*>/g, ''); // strip any HTML tags
+  if (sanitized.length < 2) {
     return res.status(400).json({ error: 'Display name must be at least 2 characters.' });
+  }
+  if (sanitized.length > 100) {
+    return res.status(400).json({ error: 'Display name must be 100 characters or fewer.' });
   }
 
   const { error } = await supabase
     .from('users')
-    .update({ display_name: displayName.trim() })
+    .update({ display_name: sanitized })
     .eq('id', req.user.id);
 
   if (error) return res.status(500).json({ error: 'Update failed.' });

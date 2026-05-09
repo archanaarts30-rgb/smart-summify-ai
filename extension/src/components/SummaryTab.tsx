@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { useStore, GUEST_FREE_LIMIT } from '../store';
 import {
   summarizeContent, summarizeContentGuest, summarizeFile,
@@ -790,7 +791,7 @@ export default function SummaryTab() {
           {/* ── Summary text — markdown rendered ── */}
           <div
             className="summary-content"
-            dangerouslySetInnerHTML={{ __html: mdToHtml(currentSummary.summary) }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(mdToHtml(currentSummary.summary), { USE_PROFILES: { html: true } }) }}
             style={{
               background: 'var(--bg2)', border: '1px solid var(--border)',
               borderRadius: 'var(--radius-lg)', padding: 14,

@@ -21,6 +21,12 @@ router.post('/', authenticate, async (req, res) => {
     if (!summaryId || !message) {
       return res.status(400).json({ error: 'summaryId and message are required.' });
     }
+    if (message.length > 2_000) {
+      return res.status(400).json({ error: 'Message too long (max 2,000 characters).' });
+    }
+    if (!Array.isArray(history) || history.length > 100) {
+      return res.status(400).json({ error: 'Invalid history.' });
+    }
 
     // ─── Load the summary for context ──────────────────────
     const { data: summary, error } = await supabase
@@ -34,9 +40,18 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Summary not found.' });
     }
 
-    // ─── Check per-summary chat limit for Basic plan ────────
+    // ─── Check per-summary chat limit using DB count (not client history) ──
+    // Counting from the DB prevents users from bypassing the limit by sending
+    // an empty history[] in every request.
     if (limits.chat_messages_per_summary !== Infinity) {
-      if (history.length >= limits.chat_messages_per_summary) {
+      const { count: dbMsgCount } = await supabase
+        .from('chat_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('summary_id', summaryId)
+        .eq('user_id', req.user.id)
+        .eq('role', 'user'); // count only user turns
+
+      if ((dbMsgCount || 0) >= limits.chat_messages_per_summary) {
         return res.status(403).json({
           error: `Chat limit of ${limits.chat_messages_per_summary} messages per summary reached. Upgrade to Premium for unlimited chat.`,
         });

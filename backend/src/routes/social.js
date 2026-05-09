@@ -56,13 +56,30 @@ SUMMARY:
 ${summary.summary_text}`;
 
     const result = await model.generateContent(prompt);
-    const raw = result.response.text().replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(raw);
+    const responseText = result.response.text();
+
+    // Extract JSON robustly — Gemini may wrap response in markdown fences
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('Social: no JSON in Gemini response:', responseText.slice(0, 300));
+      return res.status(500).json({ error: 'AI did not return valid card data. Please try again.' });
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch (parseErr) {
+      console.error('Social: JSON parse failed:', jsonMatch[0].slice(0, 300));
+      return res.status(500).json({ error: 'Failed to parse card structure from AI. Please try again.' });
+    }
+    if (!parsed.cards || !Array.isArray(parsed.cards)) {
+      return res.status(500).json({ error: 'AI returned unexpected card format. Please try again.' });
+    }
 
     res.json({ cards: parsed.cards.slice(0, clampedCount) });
   } catch (err) {
     console.error('Social images error:', err);
-    res.status(500).json({ error: 'Social image generation failed.' });
+    const msg = err?.message || 'Social image generation failed.';
+    res.status(500).json({ error: msg });
   }
 });
 

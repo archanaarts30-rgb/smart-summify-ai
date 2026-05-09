@@ -72,13 +72,14 @@ async function authenticate(req, res, next) {
         .single();
 
       if (insertError) {
+        // Log full error server-side; never expose DB internals to the client
         console.error('[auth] Failed to create user record:', insertError);
-        return res.status(500).json({ error: 'Failed to create user record', detail: insertError.message });
+        return res.status(500).json({ error: 'Failed to create user record. Please try again.' });
       }
       user = newUser;
     } else if (error) {
       console.error('[auth] Supabase user lookup error:', error);
-      return res.status(500).json({ error: 'Database error', detail: error.message, code: error.code });
+      return res.status(500).json({ error: 'Database error. Please try again.' });
     }
 
     req.user = user;

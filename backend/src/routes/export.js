@@ -3,7 +3,6 @@ const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = require('docx');
 const { authenticate, requireFeature } = require('../middleware/auth');
 const supabase  = require('../config/supabase');
-const { v4: uuidv4 } = require('uuid');
 
 const router = express.Router();
 
@@ -155,7 +154,10 @@ router.post('/', authenticate, requireFeature('export'), async (req, res) => {
 
     let fileBuffer;
     let mimeType;
-    const fileName = `exports/${req.user.id}/${summaryId}-${uuidv4()}.${format}`;
+    // Deterministic path: re-exporting the same summary+format overwrites the
+    // previous file (upsert:true actually triggers) instead of accumulating
+    // unlimited orphan files in Supabase Storage.
+    const fileName = `exports/${req.user.id}/${summaryId}.${format}`;
 
     if (format === 'txt') {
       // Include source + date as a header in the text file

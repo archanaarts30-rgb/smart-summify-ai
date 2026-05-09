@@ -14,21 +14,28 @@ const stripeRouter = require('./routes/stripe');
 
 const app = express();
 
+// ─── Trust Railway / cloud proxy so req.ip = real client IP ───────
+// Required for rate limiters keyed on req.ip to work correctly.
+app.set('trust proxy', 1);
+
 // ─── Security headers ──────────────────────────────────────────────
 app.use(helmet());
 
-// ─── CORS: allow Chrome extension ─────────────────────────────────
+// ─── CORS: allow only our Chrome extension + localhost dev ─────────
+const ALLOWED_EXTENSION_ID = process.env.CHROME_EXTENSION_ID; // set in Railway
 app.use(cors({
   origin: (origin, cb) => {
-    const allowed = [
-      process.env.FRONTEND_ORIGIN,
-      'http://localhost:3000',
-    ];
-    if (!origin || allowed.includes(origin) || (origin && origin.startsWith('chrome-extension://'))) {
-      cb(null, true);
-    } else {
-      cb(new Error('Not allowed by CORS'));
+    if (!origin) return cb(null, true); // same-origin / curl / health checks
+    if (origin === 'http://localhost:3000') return cb(null, true);
+    if (origin === process.env.FRONTEND_ORIGIN) return cb(null, true);
+    // Restrict to our specific extension ID when the env var is set;
+    // fall back to allowing any chrome-extension:// origin in development.
+    if (origin.startsWith('chrome-extension://')) {
+      if (!ALLOWED_EXTENSION_ID || origin === `chrome-extension://${ALLOWED_EXTENSION_ID}`) {
+        return cb(null, true);
+      }
     }
+    cb(new Error('Not allowed by CORS'));
   },
   credentials: true,
 }));
@@ -110,16 +117,22 @@ app.get('/payment/cancel', (_req, res) => {
   </body></html>`);
 });
 
-// ─── DB validation (development only — remove before Chrome Web Store submission) ──
+// ─── DB validation (dev/staging only, secret-key protected) ────────
+// Access: GET /health/db?secret=<HEALTH_CHECK_SECRET>
 if (process.env.NODE_ENV !== 'production') {
-  app.get('/health/db', async (_req, res) => {
+  app.get('/health/db', async (req, res) => {
+    const secret = process.env.HEALTH_CHECK_SECRET;
+    if (secret && req.query.secret !== secret) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     const supabase = require('./config/supabase');
     const results = {};
 
     // Check URL format
     const rawUrl = process.env.SUPABASE_URL || '';
+    // Omit actual URL value from response to avoid leaking secrets
     results.supabase_url_check = {
-      value: rawUrl,
+      value: rawUrl ? '[set]' : '[missing]',
       has_trailing_slash: rawUrl.endsWith('/'),
       has_extra_path: rawUrl.includes('/rest') || rawUrl.includes('/v1'),
       looks_correct: rawUrl.startsWith('https://') && !rawUrl.endsWith('/') && !rawUrl.includes('/rest'),
@@ -134,8 +147,8 @@ if (process.env.NODE_ENV !== 'production') {
         has_leading_space:  rawKey.startsWith(' ') || rawKey.startsWith('\n'),
         has_trailing_space: rawKey.endsWith(' ')   || rawKey.endsWith('\n'),
         part_count: parts.length,           // must be 3
-        role_in_jwt: payload.role,          // must be "service_role"
-        issuer: payload.iss,                // should be "supabase"
+        role_ok: payload.role === 'service_role',
+        issuer_ok: payload.iss === 'supabase',
         key_length: rawKey.length,
       };
     } catch {
