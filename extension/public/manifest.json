@@ -12,8 +12,6 @@
   ],
 
   "host_permissions": [
-    "http://localhost:3001/*",
-    "https://smart-summify-ai-development.up.railway.app/*",
     "https://smart-summify-ai-production.up.railway.app/*"
   ],
 

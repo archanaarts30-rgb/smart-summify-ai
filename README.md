@@ -49,8 +49,9 @@ Backend (Railway)
 **Why this order matters:**
 - Railway needs Firebase credentials (Step 1) and Supabase credentials (Step 2) before it can start
 - Stripe webhook (Step 4) needs the Railway URL (Step 3) to know where to send events
-- The Extension (Step 6) needs the Railway URL (Step 3) and Firebase App ID (Step 1)
-- Google OAuth redirect URI (Step 5) needs the Extension ID (Step 6) — done last
+- Google Sign-In needs a **Web application** OAuth client in the same Google Cloud project as Firebase, plus Client ID / Client secret in Firebase when the UI asks (Step 1e)
+- The Extension (Step 6) needs the Railway URL (Step 3) and Firebase config (Step 1c)
+- You can test a **production** build with **Load unpacked** and register that extension’s redirect URI **before** the Chrome Web Store — see Step 5
 
 ---
 
@@ -72,7 +73,7 @@ Create a **brand new Firebase project** for production — completely separate f
 
 1. Left sidebar → **Authentication → Get started**
 2. **Sign-in method** tab → enable:
-   - **Google** (set support email)
+   - **Google** (set support email) — full OAuth setup is in Step **1e** below
    - **Email/Password**
 3. **Settings → Authorized domains** → your production Railway domain will be added in Step 3
 
@@ -102,6 +103,27 @@ Create a **brand new Firebase project** for production — completely separate f
    private_key   → FIREBASE_PRIVATE_KEY
    ```
    > When pasting `private_key` into Railway, keep the surrounding quotes and keep `\n` as literal backslash-n characters.
+
+**1e. Google Sign-In — OAuth client + Firebase (required for “Continue with Google”)**
+
+The extension uses `chrome.identity.launchWebAuthFlow` with a **redirect URI** (`https://<extension-id>.chromiumapp.org/`). Therefore the OAuth credential must be type **Web application** — **not** “Chrome extension.”
+
+1. Open [Google Cloud Console](https://console.cloud.google.com) and select **the Google Cloud project linked to this Firebase project** (same project ID as Firebase, or Firebase → Project settings → link to Google Cloud).
+2. **APIs & Services → OAuth consent screen** → complete it if prompted (app name, user type, support email).
+3. **APIs & Services → Credentials → + Create Credentials → OAuth 2.0 Client ID**
+   - Application type: **Web application**
+   - Name: e.g. `Smart Summify prod – extension OAuth`
+   - **Authorized redirect URIs** → add the URI for **each** extension install you use (see Step 5). Pattern:
+     ```
+     https://<EXTENSION_ID>.chromiumapp.org/
+     ```
+4. Click **Create**. Copy the **Client ID** → this is `VITE_GOOGLE_OAUTH_CLIENT_ID` in `extension/.env.production` (rebuild after changes).
+5. In [Firebase Console](https://console.firebase.google.com) → **Authentication → Sign-in method → Google**:
+   - Enable the provider
+   - If Firebase asks for **Web client ID** and **Web client secret**, paste **both** from **this same** OAuth client (Google Cloud → Credentials → open the client → Client ID + Client secret). Enter them **only in Firebase** — never in `.env` or the extension bundle.
+6. The OAuth Client ID’s project must match this Firebase app. If you see `auth/invalid-credential` / “audience is not for this project,” you created the client in the **wrong** Cloud project — create a new **Web application** client under the correct project and update Firebase + `VITE_GOOGLE_OAUTH_CLIENT_ID`.
+
+> **Secrets:** Client secret stays in Firebase (and Google Cloud). Only the **Client ID** is public (`VITE_GOOGLE_OAUTH_CLIENT_ID`).
 
 ---
 
@@ -168,7 +190,7 @@ Go to the service → **Variables** tab. Add every variable in this table:
 | `STRIPE_WEBHOOK_SECRET` | `whsec_...` | Step 4c — add this after completing Step 4 |
 | `STRIPE_BASIC_PRICE_ID` | `price_...` | Step 4b — add after creating live products |
 | `STRIPE_PREMIUM_PRICE_ID` | `price_...` | Step 4b — add after creating live products |
-| `CHROME_EXTENSION_ID` | `abcdef...` | Step 6e — add after Chrome Web Store approval |
+| `CHROME_EXTENSION_ID` | `abcdef...` | Optional until you lock CORS: set to your **Chrome Web Store** extension ID after publishing (Step 6e). Omit or leave unset while only testing with **Load unpacked**. |
 
 > `RAILWAY_PUBLIC_DOMAIN` is injected automatically — do NOT set it.
 > `BACKEND_URL` is only needed for local tunnels (ngrok) — do NOT set it on Railway.
@@ -234,19 +256,33 @@ The webhook keeps user plan status in sync when Stripe subscription events happe
 
 ---
 
-### Step 5 — Google Cloud Console (OAuth for Google Sign-in)
+### Step 5 — Extension IDs and OAuth redirect URIs
 
-The Google OAuth client needs to know your **production extension's redirect URI**. This URI includes the extension ID, which you only get after publishing on the Chrome Web Store (Step 6). Do this step **after** Step 6.
+You do **not** need the Chrome Web Store to sign in. A **Web application** OAuth client allows **multiple** redirect URIs.
 
-1. [console.cloud.google.com](https://console.cloud.google.com) → **APIs & Services → Credentials**
-2. Click your existing **Web application** OAuth 2.0 client
-3. Under **Authorized redirect URIs** → **+ Add URI**:
+**A — Before Chrome Web Store (normal for first production test)**
+
+1. Fill `extension/.env.production` and run `npm run build`.
+2. `chrome://extensions` → **Developer mode** → **Load unpacked** → select `extension/dist/`.
+3. Copy the **extension ID** shown for this install (from `chrome://extensions`).
+4. In Google Cloud Console → **Credentials** → your prod **Web application** client (Step 1e) → **Authorized redirect URIs** → **+ Add URI**:
    ```
-   https://<PRODUCTION_EXTENSION_ID>.chromiumapp.org/
+   https://<THIS_UNPACKED_ID>.chromiumapp.org/
    ```
-4. Keep the dev redirect URI alongside it — having both is fine
-5. Click **Save**
-6. The **Client ID** stays the same — copy it for `extension/.env.production` as `VITE_GOOGLE_OAUTH_CLIENT_ID`
+5. Sign in with Google from the extension. This is valid end‑to‑end prod testing without submitting a `.zip` to Google.
+
+**B — After Chrome Web Store publishes**
+
+The store listing has a **different** permanent extension ID.
+
+1. In the **same** Web application OAuth client, **+ Add URI**:
+   ```
+   https://<CHROME_WEB_STORE_EXTENSION_ID>.chromiumapp.org/
+   ```
+2. Keep unpacked URIs if you still test via Load unpacked.
+3. Set Railway `CHROME_EXTENSION_ID` to the **store** ID when you want backend CORS to allow only the published build.
+
+> **Wrong type:** Do not create an OAuth client of type **Chrome extension** for this app. The code path requires **Web application** + `https://….chromiumapp.org/` (see `extension/src/lib/firebase.ts`).
 
 ---
 
@@ -254,7 +290,7 @@ The Google OAuth client needs to know your **production extension's redirect URI
 
 **6a. Create `extension/.env.production`**
 
-This file does not exist yet. Create it at `extension/.env.production` with values from the steps above:
+Create `extension/.env.production` with values from the steps above:
 
 ```env
 # ─── Backend ─────────────────────────────────────────────
@@ -269,14 +305,15 @@ VITE_FIREBASE_STORAGE_BUCKET=<your-prod-project>.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=<from Step 1c>
 VITE_FIREBASE_APP_ID=<from Step 1c>
 
-# ─── Google OAuth (from Step 5) ──────────────────────────
-VITE_GOOGLE_OAUTH_CLIENT_ID=<same client ID as dev>.apps.googleusercontent.com
+# ─── Google OAuth (Step 1e) ──────────────────────────────
+# Web application client in the SAME Google Cloud project as prod Firebase.
+VITE_GOOGLE_OAUTH_CLIENT_ID=<your-prod-web-client-id>.apps.googleusercontent.com
 
 # ─── Upgrade URL ─────────────────────────────────────────
 VITE_UPGRADE_URL=https://<your-prod-railway-domain>/upgrade
 ```
 
-> All `VITE_` values are compiled into the extension bundle at build time. Anyone who unpacks the `.crx` can see them — never put secret backend keys here.
+> All `VITE_` values are compiled into the extension bundle at build time. Anyone who unpacks the `.crx` can see them — never put secret keys (including Google **client secret**) in `VITE_*` or git.
 
 **6b. Update `extension/public/manifest.json` for production**
 
@@ -312,14 +349,13 @@ Verify the build succeeded — you should see no errors and the `dist/` folder s
 
 **6e. After Chrome Web Store approval**
 
-Once approved, the extension gets a **permanent ID** that never changes.
+Once approved, the extension gets a **permanent store ID**.
 
-1. Find the extension ID on your Chrome Web Store developer console listing page (32-character string in the URL or listed under the extension)
-2. Add to Railway prod env vars: `CHROME_EXTENSION_ID=<that ID>`
-3. Complete Step 5 — add the redirect URI to Google Cloud Console using this ID
-4. Update `extension/.env.production` if anything changed
-5. Rebuild: `npm run build`
-6. Upload the new zip to Chrome Web Store as an **update**
+1. Copy the extension ID from the Chrome Web Store developer console listing
+2. Add `CHROME_EXTENSION_ID=<that ID>` to Railway prod (for strict CORS)
+3. In Google Cloud OAuth client (Step 5B), add redirect URI `https://<STORE_ID>.chromiumapp.org/` if not already added
+4. Rebuild if env changed: `npm run build`
+5. Upload the new zip to Chrome Web Store as an **update**
 
 ---
 
@@ -341,7 +377,7 @@ Once approved, the extension gets a **permanent ID** that never changes.
 | `STRIPE_WEBHOOK_SECRET` | `whsec_...` (test) | `whsec_...` (live) (Step 4c) |
 | `STRIPE_BASIC_PRICE_ID` | `price_...` (test) | `price_...` (live) (Step 4b) |
 | `STRIPE_PREMIUM_PRICE_ID` | `price_...` (test) | `price_...` (live) (Step 4b) |
-| `CHROME_EXTENSION_ID` | unset | prod Chrome Web Store extension ID (Step 6e) |
+| `CHROME_EXTENSION_ID` | unset | **Optional** until you restrict CORS: set to **Chrome Web Store** ID after publishing (Step 6e). Omit while testing only with **Load unpacked**. |
 | `BACKEND_URL` | unset | unset (Railway injects it automatically) |
 
 ### Extension (compiled into the build)
@@ -355,7 +391,7 @@ Once approved, the extension gets a **permanent ID** that never changes.
 | `VITE_FIREBASE_STORAGE_BUCKET` | Dev bucket | **Prod bucket** |
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | Dev sender ID | **Prod sender ID** |
 | `VITE_FIREBASE_APP_ID` | Dev app ID | **Prod app ID** |
-| `VITE_GOOGLE_OAUTH_CLIENT_ID` | Google OAuth client ID | Same client ID (add prod redirect URI in Step 5) |
+| `VITE_GOOGLE_OAUTH_CLIENT_ID` | **Web application** OAuth client ID (dev GCP project) | **Web application** OAuth client ID (prod GCP project — Step 1e) |
 | `VITE_UPGRADE_URL` | Dev backend `/upgrade` | **Prod backend `/upgrade`** |
 
 ---
@@ -366,9 +402,9 @@ Once approved, the extension gets a **permanent ID** that never changes.
 |---|---|---|---|
 | `npm run dev` | development | `.env.development` | Local development — auto-rebuilds on save |
 | `npm run dev:once` | development | `.env.development` | Single build for Chrome testing |
-| `npm run build` | production | `.env.production` | Chrome Web Store submission only |
+| `npm run build` | production | `.env.production` | Production bundle — Load unpacked **or** Chrome Web Store zip |
 
-> Always use `npm run dev:once` during testing. `npm run build` is only for publishing.
+> Use `npm run dev:once` for dev backend. Use `npm run build` with `.env.production` to test prod Firebase + prod API before the store.
 
 ---
 
@@ -392,8 +428,10 @@ Once approved, the extension gets a **permanent ID** that never changes.
 Work through these in order — each section depends on the one above it.
 
 ### 1. Firebase (prod project)
-- [ ] New Firebase project created (`smart-summify-ai-prod`)
+- [ ] New Firebase project created
 - [ ] Google and Email/Password authentication enabled
+- [ ] Step **1e**: Web application OAuth client in **prod** Google Cloud project; redirect URI(s) added (Step 5)
+- [ ] Firebase **Authentication → Google** configured with Web client ID (+ client secret if the form asks)
 - [ ] Web app registered — client config values copied
 - [ ] Service account key generated — Admin SDK values copied
 - [ ] Authorized domain added (after Railway deploy in step 3)
@@ -407,6 +445,7 @@ Work through these in order — each section depends on the one above it.
 ### 3. Railway (prod service)
 - [ ] New production service created, Root Directory set to `backend`
 - [ ] All environment variables set (Firebase, Supabase, Gemini, `NODE_ENV=production`)
+- [ ] `CHROME_EXTENSION_ID` omitted or set when ready to lock CORS to the store build
 - [ ] Service deployed successfully — public domain copied
 - [ ] Firebase authorized domain updated with Railway domain
 
@@ -419,20 +458,22 @@ Work through these in order — each section depends on the one above it.
 - [ ] `whsec_...` webhook secret added to Railway
 - [ ] Customer Portal configured
 
-### 5. Extension build
+### 5. Extension build & pre-store testing
 - [ ] `extension/.env.production` created with all prod values
-- [ ] `localhost` and dev Railway URL removed from `manifest.json` host_permissions
+- [ ] `localhost` and dev Railway URL removed from `manifest.json` host_permissions (as appropriate)
 - [ ] `npm run build` completes without errors
+- [ ] Load unpacked from `dist/` — Google sign-in works (redirect URI registered for **unpacked** extension ID)
+
+### 6. Chrome Web Store
 - [ ] `dist/` contents zipped (contents, not the folder)
 - [ ] Uploaded to Chrome Web Store developer console
 - [ ] Store listing complete (description, screenshots, privacy policy)
 - [ ] Submitted for review
 
-### 6. Post-approval (after Chrome Web Store approves)
-- [ ] Production extension ID copied
-- [ ] `CHROME_EXTENSION_ID` added to Railway prod env vars
-- [ ] Prod redirect URI (`https://<PROD_ID>.chromiumapp.org/`) added to Google Cloud Console → Step 5
-- [ ] Final `npm run build` + new zip uploaded to Chrome Web Store as update
+### 7. Post-approval (after Chrome Web Store approves)
+- [ ] Store extension ID copied — **+ Add URI** in OAuth client for `https://<STORE_ID>.chromiumapp.org/`
+- [ ] `CHROME_EXTENSION_ID` set on Railway to the **store** ID (optional but recommended)
+- [ ] Final `npm run build` + new zip uploaded to Chrome Web Store as update if needed
 
 ---
 

@@ -111,20 +111,19 @@ Run the database schema:
 7. Click the green Run button (or press Ctrl+Enter)
 8. You should see "Success. No rows returned." at the bottom
 
-Create storage buckets:
+Create storage bucket:
 9.  Left sidebar → Storage → New bucket
     • Name: exports
     • Public bucket: OFF (toggle stays grey)
     • File size limit: 50 MB
     → Click Save
-10. Click New bucket again:
-    • Name: uploads
-    • Public bucket: OFF
-    • File size limit: 50 MB
-    → Click Save
+
+    (Only this bucket is required. Generated PDF/DOCX/TXT exports and PPTX slides upload here.
+    User-uploaded documents for summarization are processed in memory on the backend — they are
+    not stored in Supabase Storage.)
 
 Get your API keys:
-11. Left sidebar → Settings → API
+10. Left sidebar → Settings → API
     • Copy "Project URL"           → this is SUPABASE_URL
     • Copy "service_role" key      → this is SUPABASE_SERVICE_ROLE_KEY
       (click the eye icon to reveal it, then copy)
