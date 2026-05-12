@@ -116,13 +116,15 @@ router.post('/subscribe', authenticate, async (req, res) => {
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
-      // Shows “Add promotion code” on Hosted Checkout—Dashboard alone is not enough.
+      // Hosted Checkout shows “Add promotion code” (collapsed link under order summary)—Dashboard coupons alone don’t enable this.
       allow_promotion_codes: true,
       success_url: `${backendUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url:  `${backendUrl}/payment/cancel`,
     });
 
-    res.json({ checkoutUrl: session.url });
+    console.log('[subscribe] Checkout Session', session.id, 'allow_promotion_codes=', session.allow_promotion_codes);
+
+    res.json({ checkoutUrl: session.url, checkoutSessionId: session.id });
   } catch (err) {
     // Surface the real Stripe error message to make debugging easier
     const stripeMsg = err?.raw?.message || err?.message || 'Unknown error';
