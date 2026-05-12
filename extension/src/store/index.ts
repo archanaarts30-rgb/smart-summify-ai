@@ -27,6 +27,11 @@ export interface ChatMessage {
 
 export const GUEST_FREE_LIMIT = 3;
 
+/** Authenticated Free tier (`user.plan === 'free'`). Guests are excluded so logout preserves a paid user's length pref until login.) */
+function shouldClampSummaryToSmall(user: { plan: Plan } | null): boolean {
+  return user != null && user.plan === 'free';
+}
+
 export interface UsageStats {
   summariesToday:     number;
   summariesThisMonth: number;
@@ -80,7 +85,12 @@ export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
       user: null,
-      setUser: (user) => set({ user, showAuthModal: false }),
+      setUser: (user) =>
+        set(() => ({
+          user,
+          showAuthModal: false,
+          ...(shouldClampSummaryToSmall(user) ? { summarySize: 'small' as SummarySize } : {}),
+        })),
       clearUser: () => set({ user: null, usage: null, currentSummary: null, chatHistory: [], guestSummaryCount: 0 }),
 
       usage: null,
@@ -101,7 +111,10 @@ export const useStore = create<AppState>()(
       decreaseFontSize: () => set((s) => ({ fontSize: Math.max(12, s.fontSize - 1) })),
 
       summarySize: 'medium',
-      setSummarySize: (summarySize) => set({ summarySize }),
+      setSummarySize: (requested) =>
+        set((s) => ({
+          summarySize: shouldClampSummaryToSmall(s.user) ? 'small' : requested,
+        })),
 
       currentSummary: null,
       setCurrentSummary: (currentSummary) => set({ currentSummary, chatHistory: [] }),
@@ -122,6 +135,11 @@ export const useStore = create<AppState>()(
         user: s.user,
         guestSummaryCount: s.guestSummaryCount,
       }),
+      merge: (persistedState: unknown, currentState: AppState) => {
+        const merged = { ...currentState, ...(persistedState as Partial<AppState>) };
+        if (shouldClampSummaryToSmall(merged.user)) merged.summarySize = 'small';
+        return merged;
+      },
     }
   )
 );

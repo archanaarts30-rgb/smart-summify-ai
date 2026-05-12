@@ -183,12 +183,8 @@ export default function SummaryTab() {
   const maxSocialImages = plan === 'premium' ? 5 : plan === 'basic' ? 3 : 0;
   const guestLimitReached = isGuest && guestSummaryCount >= GUEST_FREE_LIMIT;
 
-  // Free plan only allows "small" serverside; persisted Zustand may still hold "medium" from dev / paid tier.
+  // Store clamps `summarySize` to small for authenticated free tier; guard still matches guest UI (`plan`).
   const effectiveSummarySize = (plan === 'free' ? 'small' : summarySize) as typeof SIZE_STEPS[number];
-
-  useEffect(() => {
-    if (plan === 'free' && summarySize !== 'small') setSummarySize('small');
-  }, [plan, summarySize, setSummarySize]);
 
   // Close export menu on outside click
   useEffect(() => {
