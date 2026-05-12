@@ -1,49 +1,56 @@
-# Smart Summify AI — Complete Setup Guide
-# Follow every step in order. Estimated time: ~2 hours.
+# Smart Summify AI — Complete setup guide
 
-═══════════════════════════════════════════════════════════
- BEFORE YOU START — CREATE YOUR .gitignore
-═══════════════════════════════════════════════════════════
+Follow every step **in order**. **Estimated time:** ~2 hours.
+
+---
+
+## Before you start — create `.gitignore`
 
 Do this FIRST before anything else, before pushing any code to GitHub.
 
-Create a file called .gitignore in the root smart-summify folder with this content:
+Create a file called `.gitignore` in the root smart-summify folder with this content:
 
-  # Dependencies — never commit these
-  node_modules/
+```gitignore
+# Dependencies — never commit these
+node_modules/
 
-  # Environment variables — never commit these (contain your secret keys)
-  .env
-  .env.development
-  .env.production
-  .env.local
+# Environment variables — never commit these (contain your secret keys)
+.env
+.env.development
+.env.production
+.env.local
 
-  # Build output — generated files, not source code
-  dist/
-  build/
+# Build output — generated files, not source code
+dist/
+build/
 
-  # OS files
-  .DS_Store
-  Thumbs.db
+# OS files
+.DS_Store
+Thumbs.db
 
-  # Editor
-  .vscode/
-  .idea/
-  *.swp
+# Editor
+.vscode/
+.idea/
+*.swp
+```
 
 Then verify it works:
-  git init
-  git add .
-  git status
-  → You should NEVER see node_modules/ or .env in the list
+
+```bash
+git init
+git add .
+git status
+```
+
+> You should NEVER see node_modules/ or .env in the list
 
 
-═══════════════════════════════════════════════════════════
- PHASE 1 — THIRD-PARTY ACCOUNTS (no code yet)
-═══════════════════════════════════════════════════════════
+---
 
-STEP 1 — Firebase project
-─────────────────────────
+## Phase 1 — Third-party accounts *(no application code yet)*
+
+### STEP 1 — Firebase project
+
 1. Go to https://console.firebase.google.com
 2. Click "Add project" → name it "smart-summify" → Continue
 3. Disable Google Analytics (not needed) → Create project
@@ -62,16 +69,18 @@ Enable Authentication:
 Get your web app config:
 6. Project Overview (home icon) → click </> (Web app icon) → Register app
 7. App nickname: "smart-summify-extension" → Register
-8. COPY the entire firebaseConfig object shown — you'll paste it into firebase.ts later
-   It looks like this:
-     const firebaseConfig = {
-       apiKey: "AIza...",
-       authDomain: "your-project.firebaseapp.com",
-       projectId: "your-project-id",
-       storageBucket: "your-project.appspot.com",
-       messagingSenderId: "123456789",
-       appId: "1:123456789:web:abc123"
-     };
+8. Copy the entire `firebaseConfig` object shown (you configure the extension via env files now; this is reference). It looks like this:
+
+```javascript
+const firebaseConfig = {
+  apiKey: "AIza...",
+  authDomain: "your-project.firebaseapp.com",
+  projectId: "your-project-id",
+  storageBucket: "your-project.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abc123"
+};
+```
 
 Get service account (for backend):
 9.  Project Settings (gear icon top left) → Service accounts tab
@@ -96,8 +105,8 @@ Step 1c — Add authorized domains to Firebase (do after Railway deploy):
   • Add your Railway prod domain when ready
 
 
-STEP 2 — Supabase project
-──────────────────────────
+### STEP 2 — Supabase project
+
 1. Go to https://supabase.com → Sign up → New project
 2. Name: "smart-summify"
    Database password: create a strong one and SAVE IT somewhere safe
@@ -132,8 +141,8 @@ Get your API keys:
     Never put it in the extension code. Backend only.
 
 
-STEP 3 — Stripe account
-─────────────────────────
+### STEP 3 — Stripe account
+
 1. Go to https://stripe.com → Create account → verify your email
 2. Once inside the dashboard, make sure TEST mode is ON
    (toggle in the top right should show "Test" — keep it here until you go live)
@@ -187,62 +196,73 @@ Enable Customer Portal (lets users manage their own billing):
     The webhook needs your live Railway URL which you do not have yet.
 
 
-═══════════════════════════════════════════════════════════
- PHASE 2 — BACKEND SETUP
-═══════════════════════════════════════════════════════════
+---
 
-STEP 4 — Set up backend locally
-─────────────────────────────────
+## Phase 2 — Backend setup
+
+### STEP 4 — Set up backend locally
+
 Open your terminal and navigate to the backend folder:
 
-  cd smart-summify/backend
-  npm install
+```bash
+cd smart-summify/backend
+npm install
+```
 
 ⚠️  If npm audit shows vulnerabilities — this is expected and safe to ignore.
     Run "npm audit fix" once, then ignore any remaining warnings.
     Do NOT run "npm audit fix --force" — it will break your build.
 
-Create your local .env file by copying the example:
-  Windows:   copy .env.example .env
-  Mac/Linux: cp .env.example .env
+Create your local `.env` file by copying the example:
 
-Now open the .env file in any text editor and fill in every value:
+```bash
+# Windows
+copy .env.example .env
 
-  FIREBASE_PROJECT_ID       = (from Firebase service account JSON → project_id)
-  FIREBASE_CLIENT_EMAIL     = (from Firebase service account JSON → client_email)
-  FIREBASE_PRIVATE_KEY      = (from Firebase service account JSON → private_key)
-                              ⚠️  Keep the \n characters exactly as they appear
-                              ⚠️  Wrap the entire value in double quotes
-                              Example:
-                              FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"
+# Mac / Linux
+cp .env.example .env
+```
 
-  SUPABASE_URL              = (from Supabase Settings → API → Project URL)
-  SUPABASE_SERVICE_ROLE_KEY = (from Supabase Settings → API → service_role key)
+Now open the `.env` file in any text editor and fill in every value:
 
-  GEMINI_API_KEY            = (from https://aistudio.google.com → Get API key)
+```text
+FIREBASE_PROJECT_ID       = (from Firebase service account JSON → project_id)
+FIREBASE_CLIENT_EMAIL     = (from Firebase service account JSON → client_email)
+FIREBASE_PRIVATE_KEY      = (from Firebase service account JSON → private_key)
+                            ⚠️  Keep the \n characters exactly as they appear
+                            ⚠️  Wrap the entire value in double quotes
+                            Example:
+                            FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"
 
-  STRIPE_SECRET_KEY         = (from Stripe → Developers → API keys → Secret key)
-  STRIPE_WEBHOOK_SECRET     = leave blank for now — fill in after Railway deploy
-  STRIPE_BASIC_PRICE_ID     = (from Stripe Basic product → price ID)
-  STRIPE_PREMIUM_PRICE_ID   = (from Stripe Premium product → price ID)
+SUPABASE_URL              = (from Supabase Settings → API → Project URL)
+SUPABASE_SERVICE_ROLE_KEY = (from Supabase Settings → API → service_role key)
 
-  PORT                      = 3001
-  NODE_ENV                  = development
-  FRONTEND_ORIGIN           = chrome-extension://placeholder (update after loading extension)
+GEMINI_API_KEY            = (from https://aistudio.google.com → Get API key)
+
+STRIPE_SECRET_KEY         = (from Stripe → Developers → API keys → Secret key)
+STRIPE_WEBHOOK_SECRET     = leave blank for now — fill in after Railway deploy
+STRIPE_BASIC_PRICE_ID     = (from Stripe Basic product → price ID)
+STRIPE_PREMIUM_PRICE_ID   = (from Stripe Premium product → price ID)
+
+PORT                      = 3001
+NODE_ENV                  = development
+FRONTEND_ORIGIN           = chrome-extension://placeholder (update after loading extension)
+```
 
 Test that your backend runs locally:
-  npm run dev
 
-  You should see: "Smart Summify backend running on port 3001"
-  Open your browser and go to: http://localhost:3001/health
-  You should see: {"status":"ok","ts":1234567890}
+```bash
+npm run dev
+```
 
-  If you see this — your backend is working correctly.
-  Press Ctrl+C to stop it.
+You should see: `Smart Summify backend running on port 3001`
+
+- Open http://localhost:3001/health — you should see `{"status":"ok","ts":1234567890}`.
+- If that works, the backend is running correctly. Press `Ctrl+C` to stop it.
 
 
-STEP 5 — Deploy backend to Railway
-────────────────────────────────────
+### STEP 5 — Deploy backend to Railway
+
 You already have a Railway account and a development environment set up.
 Your development URL is: https://smart-summify-ai-development.up.railway.app
 
@@ -250,10 +270,14 @@ Push your code to GitHub first:
 1. Create a new repo on https://github.com → name it "smart-summify-ai"
    Make sure it is set to Private
 2. In your terminal from the smart-summify root folder:
-     git add .
-     git commit -m "Initial commit"
-     git remote add origin https://github.com/YOUR-USERNAME/smart-summify-ai.git
-     git push -u origin main
+
+```bash
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/YOUR-USERNAME/smart-summify-ai.git
+git push -u origin main
+```
+
 
 Connect Railway to your GitHub repo:
 3. Go to https://railway.app → open your project → Development environment
@@ -305,33 +329,33 @@ Now go back and add the Stripe webhook:
 14. Railway redeploys again automatically
 
 
-═══════════════════════════════════════════════════════════
- PHASE 3 — CHROME EXTENSION SETUP
-═══════════════════════════════════════════════════════════
+---
 
-STEP 6 — Add the TypeScript type declaration file
-───────────────────────────────────────────────────
-Create a new file at exactly this path:
-  extension/src/vite-env.d.ts
+## Phase 3 — Chrome extension setup
+
+### STEP 6 — Add the TypeScript type declaration file
+
+Create a new file at exactly this path: `extension/src/vite-env.d.ts`
 
 Paste this content into it:
 
-  /// <reference types="vite/client" />
+```typescript
+/// <reference types="vite/client" />
 
-  interface ImportMetaEnv {
-    readonly VITE_API_URL: string;
-  }
+interface ImportMetaEnv {
+  readonly VITE_API_URL: string;
+}
 
-  interface ImportMeta {
-    readonly env: ImportMetaEnv;
-  }
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+```
 
-This fixes the TypeScript error:
-  "Property 'env' does not exist on type 'ImportMeta'"
+This fixes the TypeScript error: *Property 'env' does not exist on type 'ImportMeta'*.
 
 
-STEP 7 — Configure the extension
-──────────────────────────────────
+### STEP 7 — Configure the extension
+
 
 7a. Paste your Firebase config:
     Open: extension/src/lib/firebase.ts
@@ -382,53 +406,60 @@ STEP 7 — Configure the extension
     ⚠️  These files must NOT be committed to GitHub.
         They are already covered by your .gitignore file.
 
-7e. Create tsconfig.json for the extension:
-    Create file: extension/tsconfig.json
-    Paste this content:
+7e. Create `extension/tsconfig.json` with:
 
-      {
-        "compilerOptions": {
-          "target": "ES2020",
-          "useDefineForClassFields": true,
-          "lib": ["ES2020", "DOM", "DOM.Iterable"],
-          "module": "ESNext",
-          "skipLibCheck": true,
-          "moduleResolution": "bundler",
-          "allowImportingTsExtensions": true,
-          "resolveJsonModule": true,
-          "isolatedModules": true,
-          "noEmit": true,
-          "jsx": "react-jsx",
-          "strict": true,
-          "types": ["chrome", "vite/client"]
-        },
-        "include": ["src"]
-      }
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "types": ["chrome", "vite/client"]
+  },
+  "include": ["src"]
+}
+```
 
 
-STEP 8 — Install dependencies and build the extension
-───────────────────────────────────────────────────────
+### STEP 8 — Install dependencies and build the extension
+
 In your terminal:
 
-  cd smart-summify/extension
-  npm install
+```bash
+cd smart-summify/extension
+npm install
+```
 
 ⚠️  You will see vulnerability warnings — same situation as the backend.
     Run "npm audit fix" once then ignore any remaining warnings.
     Do NOT run "npm audit fix --force".
 
-Build for development (Vite automatically picks up .env.development):
-  npm run dev
+Build for development (Vite automatically picks up `.env.development`):
 
-Build for production (Vite automatically picks up .env.production):
-  npm run build
+```bash
+npm run dev
+```
 
-Both commands output to the /dist folder — that is the folder Chrome loads.
-Use "npm run dev" while testing, "npm run build" only when releasing.
+Build for production (Vite automatically picks up `.env.production`):
+
+```bash
+npm run build
+```
+
+Both commands output to the `/dist` folder — that is the folder Chrome loads. Use **`npm run dev`** while testing; **`npm run build`** only when releasing.
 
 
-STEP 9 — Load extension in Chrome
-───────────────────────────────────
+### STEP 9 — Load extension in Chrome
+
 1. Open Chrome
 2. In the address bar type: chrome://extensions and press Enter
 3. Top right corner: turn ON the "Developer mode" toggle
@@ -458,8 +489,8 @@ Add Extension ID to Firebase authorized domains:
     chrome-extension://abcdefghijklmnopabcdefghijklmnop
 
 
-STEP 10 — Test everything end-to-end
-──────────────────────────────────────
+### STEP 10 — Test everything end-to-end
+
 1. Click the Smart Summify AI extension icon in the Chrome toolbar
 2. You should see the login screen with all provider buttons
 3. Sign in with Google
@@ -476,10 +507,13 @@ Test the subscription flow with Stripe test card:
 8.  In the extension header, click the FREE badge
 9.  Click upgrade to Basic → you will be redirected to Stripe Checkout
 10. Use the Stripe test card:
-      Card number:  4242 4242 4242 4242
-      Expiry date:  Any future date (e.g. 12/28)
-      CVC:          Any 3 digits (e.g. 123)
-      Name:         Any name
+
+```text
+Card number:  4242 4242 4242 4242
+Expiry date:  Any future date (e.g. 12/28)
+CVC:          Any 3 digits (e.g. 123)
+Name:         Any name
+```
 11. Complete the payment
 12. Check Supabase → Table Editor → users table
     → Your row's plan column should now show "basic"
@@ -487,15 +521,15 @@ Test the subscription flow with Stripe test card:
 14. Try uploading a PDF — it should now work (was locked on free plan)
 
 
-═══════════════════════════════════════════════════════════
- PHASE 4 — PRODUCTION DEPLOYMENT
-═══════════════════════════════════════════════════════════
+---
+
+## Phase 4 — Production deployment
 
 Only do this when you have fully tested everything in development
 and are confident it is ready for real users.
 
-STEP 11 — Set up Railway Production environment
-─────────────────────────────────────────────────
+### STEP 11 — Set up Railway Production environment
+
 1. Railway → your project → Add environment → name it "production"
 2. Add a new service → same GitHub repo → /backend folder
 3. Add all the same environment variables as development BUT change:
@@ -508,8 +542,8 @@ STEP 11 — Set up Railway Production environment
 4. Generate a domain for production environment → copy the URL
 
 
-STEP 12 — Switch Stripe to Live mode
-──────────────────────────────────────
+### STEP 12 — Switch Stripe to Live mode
+
 1. Stripe Dashboard → toggle from TEST to LIVE (top right corner)
 2. Developers → API keys → copy the live Secret key (starts with sk_live_)
 3. Product catalogue → recreate both products in live mode:
@@ -522,16 +556,26 @@ STEP 12 — Switch Stripe to Live mode
 5. Update Railway Production environment variables with all four live Stripe values
 
 
-STEP 13 — Build and publish extension for production
-──────────────────────────────────────────────────────
+### STEP 13 — Build and publish extension for production
+
 1. Update extension/.env.production with your real production Railway URL if different
 2. Build the production extension:
-     cd smart-summify/extension
-     npm run build
+
+```bash
+cd smart-summify/extension
+npm run build
+```
+
 
 3. Create a ZIP of the dist folder:
-   Windows:   Compress-Archive -Path dist -DestinationPath smart-summify.zip
-   Mac/Linux: zip -r smart-summify.zip dist/
+
+```powershell
+Compress-Archive -Path dist -DestinationPath smart-summify.zip
+```
+
+```bash
+zip -r smart-summify.zip dist/
+```
 
 4. Go to https://chrome.google.com/webstore/devconsole
 5. Pay the one-time $5 developer registration fee (only once ever)
@@ -546,8 +590,8 @@ STEP 13 — Build and publish extension for production
    → Google usually reviews within 1–3 business days
 
 
-STEP 14 — Update Firebase with permanent extension ID
-───────────────────────────────────────────────────────
+### STEP 14 — Update Firebase with permanent extension ID
+
 After the Chrome Web Store publishes your extension, you receive a permanent
 extension ID (this is different from your developer mode ID used during testing).
 
@@ -557,56 +601,67 @@ extension ID (this is different from your developer mode ID used during testing)
    FRONTEND_ORIGIN = chrome-extension://YOUR_PERMANENT_STORE_EXTENSION_ID
 
 
-═══════════════════════════════════════════════════════════
- QUICK REFERENCE — ALL ENVIRONMENT VARIABLES
-═══════════════════════════════════════════════════════════
+---
 
-Backend — goes in backend/.env locally and Railway Variables on server:
+## Quick reference — environment variables
 
-  FIREBASE_PROJECT_ID          Your Firebase project ID
-  FIREBASE_CLIENT_EMAIL        Service account client email
-  FIREBASE_PRIVATE_KEY         Service account private key (with \n characters)
-  SUPABASE_URL                 https://yourproject.supabase.co
-  SUPABASE_SERVICE_ROLE_KEY    Supabase service role secret key
-  GEMINI_API_KEY               Google AI Studio API key
-  STRIPE_SECRET_KEY            sk_test_... (dev) or sk_live_... (prod)
-  STRIPE_WEBHOOK_SECRET        whsec_...
-  STRIPE_BASIC_PRICE_ID        price_... (Basic monthly)
-  STRIPE_PREMIUM_PRICE_ID      price_... (Premium monthly)
-  PORT                         3001
-  NODE_ENV                     development or production
-  FRONTEND_ORIGIN              chrome-extension://YOUR_EXTENSION_ID
+Backend — goes in `backend/.env` locally and Railway Variables on server:
 
-Extension — goes in separate files, never committed to GitHub:
+```text
+FIREBASE_PROJECT_ID          Your Firebase project ID
+FIREBASE_CLIENT_EMAIL        Service account client email
+FIREBASE_PRIVATE_KEY         Service account private key (with \n characters)
+SUPABASE_URL                 https://yourproject.supabase.co
+SUPABASE_SERVICE_ROLE_KEY    Supabase service role secret key
+GEMINI_API_KEY               Google AI Studio API key
+STRIPE_SECRET_KEY            sk_test_... (dev) or sk_live_... (prod)
+STRIPE_WEBHOOK_SECRET        whsec_...
+STRIPE_BASIC_PRICE_ID        price_... (Basic monthly)
+STRIPE_PREMIUM_PRICE_ID      price_... (Premium monthly)
+PORT                         3001
+NODE_ENV                     development or production
+FRONTEND_ORIGIN              chrome-extension://YOUR_EXTENSION_ID
+```
 
-  File: extension/.env.development
-    VITE_API_URL=https://smart-summify-ai-development.up.railway.app
+Extension — separate files (do not commit to GitHub):
 
-  File: extension/.env.production
-    VITE_API_URL=https://smart-summify-ai-production.up.railway.app
+```env
+# extension/.env.development
+VITE_API_URL=https://smart-summify-ai-development.up.railway.app
+
+# extension/.env.production
+VITE_API_URL=https://smart-summify-ai-production.up.railway.app
+```
 
 
-═══════════════════════════════════════════════════════════
- QUICK REFERENCE — DEV vs PROD COMMANDS
-═══════════════════════════════════════════════════════════
+---
+
+## Quick reference — Dev vs prod commands
 
 When developing and testing new features:
-  cd extension
-  npm run dev
-  → Vite picks .env.development → VITE_API_URL points to Railway dev
-  → Load the /dist folder in chrome://extensions to test
+
+```bash
+cd extension
+npm run dev
+```
+
+- Vite uses `.env.development` → `VITE_API_URL` points at Railway dev.
+- Load the `extension/dist` folder under `chrome://extensions` while the watcher runs.
 
 When releasing to production:
-  cd extension
-  npm run build
-  → Vite picks .env.production → VITE_API_URL points to Railway prod
-  → Zip the /dist folder → upload to Chrome Web Store
 
+```bash
+cd extension
+npm run build
+# → Vite picks .env.production → VITE_API_URL points to Railway prod
+# → Zip the /dist folder → upload to Chrome Web Store
+```
 
-═══════════════════════════════════════════════════════════
- FILE REFERENCE — WHAT EVERY FILE DOES
-═══════════════════════════════════════════════════════════
+---
 
+## File reference — repository layout
+
+```text
 backend/
   .env.example               Template — copy to .env and fill in your values
   .env                       Your real secret keys — NEVER commit to GitHub
@@ -636,6 +691,7 @@ backend/
                              POST /v1/users/subscribe (creates Stripe checkout)
                              POST /v1/users/billing-portal
                              GET  /v1/users/history
+                             POST /v1/users/feedback
       stripe.js              POST /webhooks/stripe (syncs plan to Supabase)
 
 extension/
@@ -648,9 +704,7 @@ extension/
     vite-env.d.ts            TypeScript types for import.meta.env.VITE_API_URL
     lib/
       firebase.ts            All Firebase auth functions
-                             ← PASTE YOUR FIREBASE CONFIG OBJECT HERE
       api.ts                 All backend API calls
-                             Uses import.meta.env.VITE_API_URL as base URL
     store/
       index.ts               Zustand global state (theme, font size, user, summary, chat)
     background/
@@ -658,22 +712,24 @@ extension/
     content/
       index.ts               Runs on every page — extracts clean text on demand
     components/
-      AuthScreen.tsx         Login UI with all 6 social providers + email/password
-      Header.tsx             Theme toggle, font A-/A+ controls, plan badge, logout
-      SummaryTab.tsx         Main summarize UI — size picker, upload, audio, copy, metrics
+      AuthScreen.tsx         Login UI
+      Header.tsx             Theme toggle, avatar, feedback, tabs entry
+      SummaryTab.tsx         Main summarize UI
+      FeedbackPanel.tsx       User feedback form
       ChatTab.tsx            Q&A chat with conversation history
-      ExportTab.tsx          Export PDF/DOCX/TXT, social media cards, presentation slides
-      HistoryTab.tsx         List of past summaries with metadata
+      ExportTab.tsx          Export PDF/DOCX/TXT, social cards, slides
+      HistoryTab.tsx         List of past summaries
     popup/
       App.tsx                Root component — auth gate + tab navigation
       main.tsx               React DOM entry point
       index.html             HTML shell for the popup window
     styles/
-      global.css             CSS variables for light/dark mode, base component styles
+      global.css             CSS variables for light/dark mode
   public/
-    manifest.json            Chrome extension manifest
-                             Lists all allowed host URLs (all three environments)
+    manifest.json            Chrome extension manifest — host_permissions URLs
 
 docs/
-  supabase-schema.sql        Run this entire file in Supabase SQL Editor (Step 2)
+  supabase-schema.sql        Run in Supabase SQL Editor (includes feedback table in full schema)
+  add-feedback-table.sql     Incremental: create feedback table only
   SETUP.md                   This file
+```
