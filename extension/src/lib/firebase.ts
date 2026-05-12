@@ -110,10 +110,11 @@ export const emailRegister = (email: string, password: string) =>
 
 export const logout = () => signOut(auth);
 
-export const getIdToken = async (): Promise<string | null> => {
+/** @param forceRefresh pass true after a 401 so Firebase returns a fresh ID token */
+export const getIdToken = async (forceRefresh = false): Promise<string | null> => {
   const user = auth.currentUser;
   if (!user) return null;
-  return user.getIdToken();
+  return user.getIdToken(forceRefresh);
 };
 
 export const onAuthChange = (cb: (user: User | null) => void) =>

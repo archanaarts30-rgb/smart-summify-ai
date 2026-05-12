@@ -3,17 +3,23 @@ import { getIdToken } from './firebase';
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 async function request(path: string, options: RequestInit = {}) {
-  const token = await getIdToken();
+  let token = await getIdToken();
   if (!token) throw new Error('Not authenticated');
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...(options.headers || {}),
-    },
+  const buildHeaders = (t: string) => ({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${t}`,
+    ...(options.headers as Record<string, string> | undefined),
   });
+
+  let res = await fetch(`${BASE_URL}${path}`, { ...options, headers: buildHeaders(token) });
+
+  // One retry: popup idle can leave an edge-case snapshot; Firebase ID tokens expire ~1h.
+  if (res.status === 401) {
+    const fresh = await getIdToken(true);
+    if (!fresh) throw new Error('Not authenticated');
+    res = await fetch(`${BASE_URL}${path}`, { ...options, headers: buildHeaders(fresh) });
+  }
 
   let data: any = {};
   try {

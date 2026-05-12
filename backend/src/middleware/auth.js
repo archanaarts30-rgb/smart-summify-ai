@@ -46,11 +46,19 @@ async function authenticate(req, res, next) {
   }
 
   const token = authHeader.split(' ')[1];
+  let decoded;
   try {
-    const decoded = await admin.auth().verifyIdToken(token);
-    req.uid = decoded.uid;
-    req.email = decoded.email;
+    decoded = await admin.auth().verifyIdToken(token);
+  } catch (err) {
+    const code = err?.code || err?.errorInfo?.code;
+    console.error('[auth] verifyIdToken failed:', code || '(no code)', err?.message || err);
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
 
+  req.uid = decoded.uid;
+  req.email = decoded.email;
+
+  try {
     // Load or create user in Supabase
     let { data: user, error } = await supabase
       .from('users')
@@ -86,7 +94,8 @@ async function authenticate(req, res, next) {
     req.planLimits = PLAN_LIMITS[user.plan] || PLAN_LIMITS.free;
     next();
   } catch (err) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    console.error('[auth] Unexpected auth/user load error:', err);
+    return res.status(500).json({ error: 'Server error. Please try again.' });
   }
 }
 
