@@ -183,6 +183,13 @@ export default function SummaryTab() {
   const maxSocialImages = plan === 'premium' ? 5 : plan === 'basic' ? 3 : 0;
   const guestLimitReached = isGuest && guestSummaryCount >= GUEST_FREE_LIMIT;
 
+  // Free plan only allows "small" serverside; persisted Zustand may still hold "medium" from dev / paid tier.
+  const effectiveSummarySize = (plan === 'free' ? 'small' : summarySize) as typeof SIZE_STEPS[number];
+
+  useEffect(() => {
+    if (plan === 'free' && summarySize !== 'small') setSummarySize('small');
+  }, [plan, summarySize, setSummarySize]);
+
   // Close export menu on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -222,7 +229,7 @@ export default function SummaryTab() {
         result = await summarizeContentGuest(response.content, response.url, targetLanguage);
         incrementGuestCount();
       } else {
-        result = await summarizeContent(response.content, summarySize, response.url, targetLanguage);
+        result = await summarizeContent(response.content, effectiveSummarySize, response.url, targetLanguage);
         if (usage) setUsage({ ...usage, summariesToday: usage.summariesToday + 1, summariesThisMonth: usage.summariesThisMonth + 1, totalSummaries: usage.totalSummaries + 1 });
       }
       setCurrentSummary(result);
@@ -238,7 +245,7 @@ export default function SummaryTab() {
     if (!selectedFile) return;
     setError(''); setLoading(true);
     try {
-      const result = await summarizeFile(selectedFile, summarySize, targetLanguage);
+      const result = await summarizeFile(selectedFile, effectiveSummarySize, targetLanguage);
       if (usage) setUsage({ ...usage, summariesToday: usage.summariesToday + 1, summariesThisMonth: usage.summariesThisMonth + 1, totalSummaries: usage.totalSummaries + 1 });
       setCurrentSummary(result);
     } catch (e: any) {
@@ -434,20 +441,19 @@ export default function SummaryTab() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
           <span style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 500 }}>Summary length</span>
           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)' }}>
-            {SIZE_LABELS[summarySize]}
-            {plan === 'free' && summarySize !== 'small' && ' 🔒'}
+            {SIZE_LABELS[effectiveSummarySize]}
             <span style={{ fontWeight: 400, color: 'var(--text2)', marginLeft: 5 }}>
-              {SIZE_DESCS[summarySize]}
+              {SIZE_DESCS[effectiveSummarySize]}
             </span>
           </span>
         </div>
         <input
           type="range"
           min={0} max={2} step={1}
-          value={plan === 'free' ? 0 : SIZE_STEPS.indexOf(summarySize as typeof SIZE_STEPS[number])}
+          value={SIZE_STEPS.indexOf(effectiveSummarySize)}
           disabled={plan === 'free'}
           onChange={e => { if (plan !== 'free') setSummarySize(SIZE_STEPS[+e.target.value]); }}
-          title={plan === 'free' ? 'Upgrade to unlock longer summaries' : SIZE_DESCS[summarySize]}
+          title={plan === 'free' ? 'Upgrade to unlock longer summaries' : SIZE_DESCS[effectiveSummarySize]}
           style={{ width: '100%', opacity: plan === 'free' ? 0.55 : 1 }}
         />
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text2)', marginTop: 3 }}>
