@@ -110,3 +110,15 @@ export const openBillingPortal = () =>
   request('/v1/users/billing-portal', { method: 'POST' });
 export const getHistory = (page = 1) =>
   request(`/v1/users/history?page=${page}`);
+
+export type FeedbackCategory = 'bug' | 'feature' | 'billing' | 'general';
+
+export const submitFeedback = (payload: {
+  category: FeedbackCategory;
+  message: string;
+  extensionVersion?: string;
+}) =>
+  request('/v1/feedback', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });

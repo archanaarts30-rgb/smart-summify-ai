@@ -4,9 +4,11 @@ import { useStore } from '../store';
 interface HeaderProps {
   onSignInClick: () => void;
   onAvatarClick?: () => void;
+  feedbackOpen?: boolean;
+  onFeedbackClick?: () => void;
 }
 
-export default function Header({ onSignInClick, onAvatarClick }: HeaderProps) {
+export default function Header({ onSignInClick, onAvatarClick, feedbackOpen, onFeedbackClick }: HeaderProps) {
   const { user, theme, toggleTheme } = useStore();
 
   const planColors: Record<string, string> = {
@@ -84,6 +86,20 @@ export default function Header({ onSignInClick, onAvatarClick }: HeaderProps) {
 
       {/* Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button
+          type="button"
+          onClick={onFeedbackClick}
+          title="Send feedback"
+          aria-expanded={feedbackOpen}
+          aria-label="Send feedback"
+          style={{
+            ...iconBtn,
+            ...(feedbackOpen ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : {}),
+          }}
+        >
+          💬
+        </button>
+
         {/* Dark mode toggle */}
         <button onClick={toggleTheme} title="Toggle theme" style={iconBtn}>
           {theme === 'dark' ? '☀' : '◑'}

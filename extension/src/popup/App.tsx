@@ -7,6 +7,7 @@ import HistoryTab from '../components/HistoryTab';
 import StatsTab from '../components/StatsTab';
 import Header from '../components/Header';
 import ProfilePage from '../components/ProfilePage';
+import FeedbackPanel from '../components/FeedbackPanel';
 
 type Tab = 'summary' | 'history' | 'stats';
 type View = 'main' | 'profile';
@@ -15,6 +16,7 @@ export default function App() {
   const { user, setUser, clearUser, setUsage, theme, fontSize, showAuthModal, setShowAuthModal } = useStore();
   const [tab, setTab] = useState<Tab>('summary');
   const [view, setView] = useState<View>('main');
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
@@ -68,7 +70,7 @@ export default function App() {
 
       {/* ── Profile view ── */}
       {view === 'profile' && (
-        <ProfilePage onBack={() => setView('main')} />
+        <ProfilePage onBack={() => { setFeedbackOpen(false); setView('main'); }} />
       )}
 
       {/* ── Main view ── */}
@@ -76,8 +78,17 @@ export default function App() {
         <>
           <Header
             onSignInClick={() => setShowAuthModal(true)}
-            onAvatarClick={() => setView('profile')}
+            onAvatarClick={() => { setFeedbackOpen(false); setView('profile'); }}
+            feedbackOpen={feedbackOpen}
+            onFeedbackClick={() => setFeedbackOpen(o => !o)}
           />
+
+          {feedbackOpen && (
+            <FeedbackPanel
+              onClose={() => setFeedbackOpen(false)}
+              onRequireAuth={() => setShowAuthModal(true)}
+            />
+          )}
 
           {/* Tab bar */}
           <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>

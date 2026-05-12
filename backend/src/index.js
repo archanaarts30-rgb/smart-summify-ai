@@ -10,6 +10,7 @@ const exportRouter = require('./routes/export');
 const socialRouter = require('./routes/social');
 const slidesRouter = require('./routes/slides');
 const usersRouter = require('./routes/users');
+const feedbackRouter = require('./routes/feedback');
 const stripeRouter = require('./routes/stripe');
 
 const app = express();
@@ -55,6 +56,15 @@ app.use(rateLimit({
   message: { error: 'Too many requests, please slow down.' },
 }));
 
+// ─── Feedback: tighter cap (hourly) ─────────────────────────────────
+const feedbackLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many feedback submissions. Try again later.' },
+});
+
 // ─── Routes ────────────────────────────────────────────────────────
 app.use('/v1/summarize', summarizeRouter);
 app.use('/v1/chat', chatRouter);
@@ -62,6 +72,7 @@ app.use('/v1/export', exportRouter);
 app.use('/v1/social-images', socialRouter);
 app.use('/v1/slides', slidesRouter);
 app.use('/v1/users', usersRouter);
+app.use('/v1/feedback', feedbackLimiter, feedbackRouter);
 
 // ─── Health check ──────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));

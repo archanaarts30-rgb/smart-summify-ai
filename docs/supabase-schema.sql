@@ -72,6 +72,20 @@ create trigger users_updated_at
   before update on public.users
   for each row execute function public.handle_updated_at();
 
+-- ─── Feedback (extension → backend inserts via service role) ───────
+create table if not exists public.feedback (
+  id                  uuid primary key default uuid_generate_v4(),
+  user_id             uuid not null references public.users(id) on delete cascade,
+  category            text not null default 'general'
+                      check (category in ('bug', 'feature', 'billing', 'general')),
+  message             text not null,
+  extension_version   text,
+  created_at          timestamptz not null default now()
+);
+
+create index if not exists idx_feedback_created_at on public.feedback (created_at desc);
+create index if not exists idx_feedback_user_id    on public.feedback (user_id);
+
 -- ─── Row Level Security ───────────────────────────────────────────
 -- Note: We use the service role key in the backend, which bypasses RLS.
 -- RLS is a safety net for direct client access (if you ever add it).
@@ -93,11 +107,13 @@ grant usage on schema public to anon, authenticated, service_role;
 grant all on table public.users         to service_role;
 grant all on table public.summaries     to service_role;
 grant all on table public.chat_messages to service_role;
+grant all on table public.feedback          to service_role;
 
 -- authenticated: full access for logged-in users (if you add client-side queries later)
 grant all on table public.users         to authenticated;
 grant all on table public.summaries     to authenticated;
 grant all on table public.chat_messages to authenticated;
+grant all on table public.feedback          to authenticated;
 
 -- anon: no access (all reads/writes go through the authenticated backend)
 -- sequences
