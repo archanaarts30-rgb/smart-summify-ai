@@ -116,6 +116,8 @@ router.post('/subscribe', authenticate, async (req, res) => {
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
+      // Shows “Add promotion code” on Hosted Checkout—Dashboard alone is not enough.
+      allow_promotion_codes: true,
       success_url: `${backendUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url:  `${backendUrl}/payment/cancel`,
     });
