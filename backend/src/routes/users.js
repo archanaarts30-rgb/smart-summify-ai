@@ -1,7 +1,19 @@
 const express = require('express');
+const { rateLimit } = require('express-rate-limit');
 const { authenticate, PLAN_LIMITS } = require('../middleware/auth');
 const supabase = require('../config/supabase');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+const feedbackSubmitLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many feedback submissions. Try again later.' },
+});
+
+const FEEDBACK_CATEGORIES = new Set(['bug', 'feature', 'billing', 'general']);
+const FEEDBACK_MAX_MESSAGE = 4000;
 
 const router = express.Router();
 
@@ -70,6 +82,47 @@ router.patch('/me', authenticate, async (req, res) => {
     .eq('id', req.user.id);
 
   if (error) return res.status(500).json({ error: 'Update failed.' });
+  res.json({ success: true });
+});
+
+// ─── User feedback ───────────────────────────────────────────────────
+router.post('/feedback', feedbackSubmitLimiter, authenticate, async (req, res) => {
+  let { category = 'general', message, extensionVersion } = req.body;
+
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ error: 'Message is required.' });
+  }
+
+  message = message.trim().replace(/\r\n/g, '\n');
+  if (message.length < 3) {
+    return res.status(400).json({ error: 'Please enter at least a few characters.' });
+  }
+  if (message.length > FEEDBACK_MAX_MESSAGE) {
+    return res.status(400).json({ error: `Message must be ${FEEDBACK_MAX_MESSAGE} characters or fewer.` });
+  }
+
+  if (typeof category !== 'string' || !FEEDBACK_CATEGORIES.has(category)) {
+    category = 'general';
+  }
+
+  let extension_version = null;
+  if (extensionVersion != null && typeof extensionVersion === 'string') {
+    extension_version = extensionVersion.trim().slice(0, 64);
+    if (extension_version === '') extension_version = null;
+  }
+
+  const { error } = await supabase.from('feedback').insert({
+    user_id: req.user.id,
+    category,
+    message,
+    extension_version,
+  });
+
+  if (error) {
+    console.error('[feedback] insert failed:', error);
+    return res.status(500).json({ error: 'Could not save feedback. Please try again.' });
+  }
+
   res.json({ success: true });
 });
 

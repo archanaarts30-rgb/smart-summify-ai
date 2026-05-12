@@ -118,7 +118,7 @@ export const submitFeedback = (payload: {
   message: string;
   extensionVersion?: string;
 }) =>
-  request('/v1/feedback', {
+  request('/v1/users/feedback', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
