@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import DOMPurify from 'dompurify';
-import { useStore, GUEST_FREE_LIMIT } from '../store';
+import { useStore, GUEST_FREE_LIMIT, emptyUsageForPlan } from '../store';
 import {
   summarizeContent, summarizeContentGuest, summarizeFile,
   subscribe, exportSummary, generateSocialImages, generateSlides, sendChatMessage,
@@ -102,22 +102,23 @@ const SIZE_STEPS = ['small', 'medium', 'large'] as const;
 const SIZE_LABELS: Record<string, string> = { small: 'Short', medium: 'Medium', large: 'Full' };
 const SIZE_DESCS:  Record<string, string> = { small: '3–5 sentences', medium: '2–3 paragraphs', large: 'Detailed breakdown' };
 
+/** `nativeLabel`: shown in the picker so speakers can recognize their language instantly. Values still match Gemini prompt names. */
 const LANGUAGES = [
-  { value: 'auto',                 label: 'Auto' },
-  { value: 'English',              label: 'English' },
-  { value: 'Spanish',              label: 'Spanish' },
-  { value: 'French',               label: 'French' },
-  { value: 'German',               label: 'German' },
-  { value: 'Portuguese',           label: 'Portuguese' },
-  { value: 'Italian',              label: 'Italian' },
-  { value: 'Dutch',                label: 'Dutch' },
-  { value: 'Russian',              label: 'Russian' },
-  { value: 'Chinese (Simplified)', label: 'Chinese' },
-  { value: 'Japanese',             label: 'Japanese' },
-  { value: 'Korean',               label: 'Korean' },
-  { value: 'Arabic',               label: 'Arabic' },
-  { value: 'Hindi',                label: 'Hindi' },
-  { value: 'Turkish',              label: 'Turkish' },
+  { value: 'auto',                 nativeLabel: 'Auto' },
+  { value: 'English',              nativeLabel: 'English' },
+  { value: 'Spanish',              nativeLabel: 'Español' },
+  { value: 'French',               nativeLabel: 'Français' },
+  { value: 'German',               nativeLabel: 'Deutsch' },
+  { value: 'Portuguese',           nativeLabel: 'Português' },
+  { value: 'Italian',              nativeLabel: 'Italiano' },
+  { value: 'Dutch',                nativeLabel: 'Nederlands' },
+  { value: 'Russian',              nativeLabel: 'Русский' },
+  { value: 'Chinese (Simplified)', nativeLabel: '简体中文' },
+  { value: 'Japanese',             nativeLabel: '日本語' },
+  { value: 'Korean',               nativeLabel: '한국어' },
+  { value: 'Arabic',               nativeLabel: 'العربية' },
+  { value: 'Hindi',                nativeLabel: 'हिन्दी' },
+  { value: 'Turkish',              nativeLabel: 'Türkçe' },
 ];
 
 const THEME_COLORS: Record<string, string> = {
@@ -231,18 +232,17 @@ export default function SummaryTab() {
         incrementGuestCount();
       } else {
         result = await summarizeContent(response.content, effectiveSummarySize, response.url, targetLanguage);
-        if (usage) {
-          const d = Number(result.metrics?.timeSavedSec) || 0;
-          setUsage({
-            ...usage,
-            summariesToday: usage.summariesToday + 1,
-            summariesThisMonth: usage.summariesThisMonth + 1,
-            totalSummaries: usage.totalSummaries + 1,
-            timeSavedTodaySec: (usage.timeSavedTodaySec ?? 0) + d,
-            timeSavedThisMonthSec: (usage.timeSavedThisMonthSec ?? 0) + d,
-            timeSavedTotalSec: (usage.timeSavedTotalSec ?? 0) + d,
-          });
-        }
+        const d = Number(result.metrics?.timeSavedSec) || 0;
+        const base = usage ?? emptyUsageForPlan(plan);
+        setUsage({
+          ...base,
+          summariesToday: base.summariesToday + 1,
+          summariesThisMonth: base.summariesThisMonth + 1,
+          totalSummaries: base.totalSummaries + 1,
+          timeSavedTodaySec: (base.timeSavedTodaySec ?? 0) + d,
+          timeSavedThisMonthSec: (base.timeSavedThisMonthSec ?? 0) + d,
+          timeSavedTotalSec: (base.timeSavedTotalSec ?? 0) + d,
+        });
       }
       setCurrentSummary(result);
     } catch (e: any) {
@@ -257,19 +257,18 @@ export default function SummaryTab() {
     if (!selectedFile) return;
     setError(''); setLoading(true);
     try {
-      const       result = await summarizeFile(selectedFile, effectiveSummarySize, targetLanguage);
-      if (usage) {
-        const d = Number(result.metrics?.timeSavedSec) || 0;
-        setUsage({
-          ...usage,
-          summariesToday: usage.summariesToday + 1,
-          summariesThisMonth: usage.summariesThisMonth + 1,
-          totalSummaries: usage.totalSummaries + 1,
-          timeSavedTodaySec: (usage.timeSavedTodaySec ?? 0) + d,
-          timeSavedThisMonthSec: (usage.timeSavedThisMonthSec ?? 0) + d,
-          timeSavedTotalSec: (usage.timeSavedTotalSec ?? 0) + d,
-        });
-      }
+      const result = await summarizeFile(selectedFile, effectiveSummarySize, targetLanguage);
+      const d = Number(result.metrics?.timeSavedSec) || 0;
+      const base = usage ?? emptyUsageForPlan(plan);
+      setUsage({
+        ...base,
+        summariesToday: base.summariesToday + 1,
+        summariesThisMonth: base.summariesThisMonth + 1,
+        totalSummaries: base.totalSummaries + 1,
+        timeSavedTodaySec: (base.timeSavedTodaySec ?? 0) + d,
+        timeSavedThisMonthSec: (base.timeSavedThisMonthSec ?? 0) + d,
+        timeSavedTotalSec: (base.timeSavedTotalSec ?? 0) + d,
+      });
       setCurrentSummary(result);
     } catch (e: any) {
       setError(e.message || 'Document summarization failed. Please try again.');
@@ -461,7 +460,7 @@ export default function SummaryTab() {
           >
             {LANGUAGES.map(l => (
               <option key={l.value} value={l.value} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
-                {l.label}
+                {l.nativeLabel}
               </option>
             ))}
           </select>

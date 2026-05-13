@@ -1,4 +1,5 @@
 import { getIdToken } from './firebase';
+import type { UsageStats } from '../store';
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -108,6 +109,7 @@ export const generateSlides = (summaryId: string, slideCount: number) =>
 
 // ─── User ──────────────────────────────────────────────────────────
 export const getMe = () => request('/v1/users/me');
+export const getUsageStats = (): Promise<{ usage: UsageStats }> => request('/v1/users/stats');
 export const updateProfile = (displayName: string) =>
   request('/v1/users/me', { method: 'PATCH', body: JSON.stringify({ displayName }) });
 export const subscribe = (plan: 'basic' | 'premium') =>

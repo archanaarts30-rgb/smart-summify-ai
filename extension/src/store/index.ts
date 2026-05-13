@@ -43,13 +43,26 @@ export interface UsageStats {
   timeSavedTotalSec?:     number;
 }
 
+/** Baseline usage before `/v1/users/stats` loads; also used to merge optimistic increments on the Summary tab. */
+export function emptyUsageForPlan(plan: Plan): UsageStats {
+  return {
+    summariesToday: 0,
+    summariesThisMonth: 0,
+    totalSummaries: 0,
+    dailyLimit: plan === 'premium' ? null : plan === 'basic' ? 50 : 3,
+    timeSavedTodaySec: 0,
+    timeSavedThisMonthSec: 0,
+    timeSavedTotalSec: 0,
+  };
+}
+
 interface AppState {
   // Auth
   user: { id: string; email: string; displayName: string; plan: Plan } | null;
   setUser: (user: AppState['user']) => void;
   clearUser: () => void;
 
-  // Usage stats (fetched from /v1/users/me)
+  // Usage stats (lazy-loaded from GET /v1/users/stats when Stats / Profile open)
   usage: UsageStats | null;
   setUsage: (usage: UsageStats | null) => void;
 

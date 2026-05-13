@@ -1,143 +1,175 @@
 # Smart Summify AI — Backend API Reference
 
+Jump to any route from the **[endpoint index](#endpoint-index)** below. Each section heading has a stable anchor for sharing (works in GitHub, VS Code, and most Markdown viewers).
+
+---
+
+## Table of contents
+
+- [Base URLs](#base-urls)
+- [Authentication](#authentication)
+- [Rate limits](#rate-limits)
+- [Plan limits](#plan-limits)
+- [Errors](#common-error-responses)
+- [**Endpoint index** — click a row](#endpoint-index)
+- [Environment variables](#required-environment-variables-railway)
+
+---
+
 ## Base URLs
 
 | Environment | URL |
 |---|---|
 | Development | `https://smart-summify-ai-development.up.railway.app` |
-| Production  | `https://smart-summify-ai-production.up.railway.app` |
+| Production | `https://smart-summify-ai-production.up.railway.app` |
 
 ---
 
 ## Authentication
 
-All protected endpoints require a Firebase ID token passed as a Bearer token in the `Authorization` header.
+Protected endpoints need a Firebase ID token:
 
 ```
 Authorization: Bearer <firebase-id-token>
 ```
 
-The token is obtained via `firebase.auth().currentUser.getIdToken()` in the extension frontend.  
-On first use, the backend **auto-creates** a Supabase user record linked to the Firebase UID.
+Obtain from the extension with `firebase.auth().currentUser.getIdToken()` (after sign-in).
+
+On first authenticated request the backend ensures a matching row exists in Supabase (`users`).
+
+Guest routes do **not** use this header unless noted.
 
 ---
 
-## Rate Limits
+## Rate limits
 
 | Scope | Limit |
 |---|---|
-| Global (all endpoints) | 60 requests / minute per IP |
+| Global (all `/v1/*` routes, etc.) | 60 requests / minute per IP (see middleware) |
 | `POST /v1/summarize/guest` | 3 requests / 24 hours per IP |
 
-Exceeding a limit returns **HTTP 429** with `{ "error": "Too many requests, please slow down." }`.
+**HTTP `429`** example: `{ "error": "Too many requests, please slow down." }`
 
 ---
 
-## Plan Limits
+## Plan limits
 
-| Feature | Free | Basic ($4.99/mo) | Premium ($9.99/mo) |
+Aligned with [`backend/src/middleware/auth.js`](../backend/src/middleware/auth.js):
+
+| Feature | Free | Basic | Premium |
 |---|---|---|---|
 | Summaries per day | 3 | 50 | Unlimited |
-| Summary sizes | Short only | Short, Medium, Full | Short, Medium, Full |
-| File upload | ✗ | ✓ (max 10 MB) | ✓ (max 50 MB) |
-| Export (PDF/Word/Text) | ✗ | ✓ | ✓ |
-| Text-to-speech | ✗ | ✓ | ✓ |
-| Chat with content | ✗ | ✓ (10 msgs / summary) | ✓ (Unlimited) |
-| Social image generation | ✗ | ✓ (max 3 cards) | ✓ (max 5 cards) |
-| Presentation slides | ✗ | ✗ | ✓ |
+| Summary lengths | Short | Short, Medium, Full | Short, Medium, Full |
+| PDF / document upload | — | ✓ (≤ 10 MB) | ✓ (≤ 50 MB) |
+| Export PDF / DOCX / TXT | — | ✓ | ✓ |
+| Chat with summary | — | ✓ (10 msgs / summary) | ✓ (unlimited) |
+| Social post cards | — | ✓ (1–3 cards/request) | ✓ (1–6 cards/request) |
+| Presentation slides (.pptx) | — | — | ✓ |
 
 ---
 
-## Common Error Responses
+## Common error responses
 
-| HTTP Status | Meaning |
+| HTTP | Typical cause |
 |---|---|
-| `400` | Bad request — missing or invalid body field |
-| `401` | Missing, expired, or invalid Firebase token |
-| `403` | Feature not available on current plan |
-| `404` | Resource not found or does not belong to user |
-| `429` | Rate limit or daily quota exceeded |
-| `500` | Internal server / AI / database error |
-| `503` | External service not configured (e.g. Stripe keys missing) |
+| `400` | Bad body, missing fields, file too large, unsupported MIME |
+| `401` | Missing or invalid Bearer token |
+| `403` | Feature not allowed on plan, quota exhausted |
+| `404` | Summary or resource not found / not yours |
+| `413` | Upload over hard server limit |
+| `429` | Rate limit or guest quota |
+| `500` | Server / AI / DB failure |
+| `503` | Optional features not configured (e.g. Stripe) |
 
-All error responses follow the shape: `{ "error": "Human-readable message" }`
-
----
-
-## Endpoints
-
-### Utility
+Shape: `{ "error": "<message>" }` (some routes add extra keys like `allowed_sizes`).
 
 ---
 
-#### `GET /health`
+## Endpoint index
 
-Public. Returns server status.
+| Method | Path | Section |
+|:---:|:---|:---:|
+| `GET` | `/health` | [→](#endpoint-get-health) |
+| `GET` | `/payment/success` | [→](#endpoint-get-payment-success) |
+| `GET` | `/payment/cancel` | [→](#endpoint-get-payment-cancel) |
+| `POST` | `/v1/summarize/guest` | [→](#endpoint-post-v1-summarize-guest) |
+| `POST` | `/v1/summarize` | [→](#endpoint-post-v1-summarize) |
+| `POST` | `/v1/summarize/file` | [→](#endpoint-post-v1-summarize-file) |
+| `POST` | `/v1/chat` | [→](#endpoint-post-v1-chat) |
+| `GET` | `/v1/chat/:summaryId` | [→](#endpoint-get-v1-chat-summaryid) |
+| `POST` | `/v1/export` | [→](#endpoint-post-v1-export) |
+| `POST` | `/v1/social-images` | [→](#endpoint-post-v1-social-images) |
+| `POST` | `/v1/slides` | [→](#endpoint-post-v1-slides) |
+| `GET` | `/v1/users/me` | [→](#endpoint-get-v1-users-me) |
+| `GET` | `/v1/users/stats` | [→](#endpoint-get-v1-users-stats) |
+| `PATCH` | `/v1/users/me` | [→](#endpoint-patch-v1-users-me) |
+| `POST` | `/v1/users/feedback` | [→](#endpoint-post-v1-users-feedback) |
+| `POST` | `/v1/users/subscribe` | [→](#endpoint-post-v1-users-subscribe) |
+| `POST` | `/v1/users/billing-portal` | [→](#endpoint-post-v1-users-billing-portal) |
+| `GET` | `/v1/users/history` | [→](#endpoint-get-v1-users-history) |
+| `POST` | `/webhooks/stripe` | [→](#endpoint-post-webhooks-stripe) |
+
+<a id="endpoint-get-health"></a>
+
+### `GET /health`
+
+**Auth:** none.
+
+**Purpose:** Lightweight liveness.
 
 **Response `200`**
+
 ```json
 { "status": "ok", "ts": 1715000000000 }
 ```
 
 ---
 
-#### `GET /health/db` *(development only)*
+<a id="endpoint-get-payment-success"></a>
 
-Public. Validates Supabase connectivity by inserting and deleting test rows.  
-Not available when `NODE_ENV=production`.
+### `GET /payment/success`
 
-**Response `200`**
-```json
-{
-  "ok": true,
-  "results": {
-    "supabase_url_check": { "looks_correct": true, "value": "https://..." },
-    "key_check": { "role_in_jwt": "service_role", "part_count": 3 },
-    "users": { "ok": true, "inserted_id": "uuid" },
-    "summaries": { "ok": true, "inserted_id": "uuid" },
-    "read_back": { "user": { "ok": true }, "summary": { "ok": true } },
-    "cleanup": { "ok": true }
-  }
-}
-```
+**Auth:** none.
+
+**Purpose:** Stripe Checkout success page (HTML). User closes the tab after paying.
 
 ---
 
-#### `GET /payment/success`
+<a id="endpoint-get-payment-cancel"></a>
 
-Public. HTML page shown in browser tab after successful Stripe Checkout. The user closes the tab and returns to the extension.
+### `GET /payment/cancel`
 
----
+**Auth:** none.
 
-#### `GET /payment/cancel`
-
-Public. HTML page shown in browser tab when Stripe Checkout is cancelled.
+**Purpose:** Stripe Checkout cancelled (HTML).
 
 ---
 
-### Summarization — `/v1/summarize`
+<a id="endpoint-post-v1-summarize-guest"></a>
 
----
+### `POST /v1/summarize/guest`
 
-#### `POST /v1/summarize/guest`
+**Auth:** none · **Quota:** 3 / 24h per IP · **Stores DB:** no
 
-**Auth:** None  
-**Rate limit:** 3 requests / 24 hours per IP
-
-Summarizes a page for unauthenticated (guest) users. Always returns a short summary. Nothing is saved to the database.
+**Purpose:** Quick short summary for visitors without an account.
 
 **Request body**
+
 ```json
 {
-  "content": "Full text of the page (min 50 characters)",
-  "sourceUrl": "https://example.com/article"
+  "content": "Minimum 50 characters of page text…",
+  "sourceUrl": "https://example.com/article",
+  "targetLanguage": "auto"
 }
 ```
 
+`targetLanguage` is optional (`"auto"` default). Use the same identifiers the backend expects (examples: `"English"`, `"Spanish"`, `"French"`, `"Chinese (Simplified)"`, `"Japanese"`). The Chrome extension picker shows native-script labels but submits these canonical values.
+
 **Response `200`**
+
 ```json
 {
-  "summary": "A concise short summary of the content...",
+  "summary": "…",
   "metrics": {
     "originalWordCount": 1200,
     "summaryWordCount": 80,
@@ -152,33 +184,36 @@ Summarizes a page for unauthenticated (guest) users. Always returns a short summ
 
 ---
 
-#### `POST /v1/summarize`
+<a id="endpoint-post-v1-summarize"></a>
 
-**Auth:** Required  
-**Plans:** Free, Basic, Premium
+### `POST /v1/summarize`
 
-Summarizes a web page. Result is saved to the `summaries` table.
+**Auth:** required · **Plans:** Free (short only), Basic, Premium
+
+**Purpose:** Summarize webpage text and persist under the user.
 
 **Request body**
+
 ```json
 {
-  "content": "Full text of the page (min 50 characters)",
-  "size": "small | medium | large",
-  "sourceUrl": "https://example.com/article"
+  "content": "Minimum 50 characters…",
+  "size": "small",
+  "sourceUrl": "https://example.com/article",
+  "targetLanguage": "auto"
 }
 ```
 
-| Size | Plan required | Description |
-|---|---|---|
-| `small` | Free+ | 3–5 sentences |
-| `medium` | Basic+ | 2–3 paragraphs |
-| `large` | Basic+ | Detailed breakdown |
+| Field | Notes |
+|---|---|
+| `size` | `small` \| `medium` \| `large` — must be in plan’s `sizes_allowed` |
+| `targetLanguage` | Optional · same convention as `/guest` |
 
 **Response `200`**
+
 ```json
 {
-  "summaryId": "uuid",
-  "summary": "The full summary text...",
+  "summaryId": "550e8400-e29b-41d4-a716-446655440000",
+  "summary": "…",
   "metrics": {
     "originalWordCount": 1200,
     "summaryWordCount": 200,
@@ -191,313 +226,341 @@ Summarizes a web page. Result is saved to the `summaries` table.
 }
 ```
 
-**Error `403`** — size not allowed on plan  
-**Error `429`** — daily summary quota reached
+**Errors:** `403` wrong size/plan · `429` daily summary quota
 
 ---
 
-#### `POST /v1/summarize/file`
+<a id="endpoint-post-v1-summarize-file"></a>
 
-**Auth:** Required  
-**Plans:** Basic, Premium  
-**Content-Type:** `multipart/form-data`
+### `POST /v1/summarize/file`
 
-Uploads and summarizes a PDF, Word, or text file.
+**Auth:** required · **Plans:** Basic, Premium · **Content-Type:** `multipart/form-data`
+
+**Purpose:** Upload PDF/DOC/DOCX/TXT and summarize.
 
 **Form fields**
 
 | Field | Type | Description |
 |---|---|---|
-| `file` | File | `.pdf`, `.doc`, `.docx`, `.txt` — max 10 MB (Basic) / 50 MB (Premium) |
-| `size` | string | `small`, `medium`, or `large` |
+| `file` | File | MIME must be pdf, msword, wordprocessingml, or plain text |
+| `size` | string | `small` \| `medium` \| `large` |
+| `targetLanguage` | string *(optional)* | Same as summarize |
 
-**Response `200`** — same shape as `POST /v1/summarize`
+Body size is rejected early if larger than absolute server ceiling; plan sets `max_file_mb` (10 vs 50).
 
-**Error `403`** — plan does not allow file upload
+**Response `200`:** Same JSON shape as `POST /v1/summarize` (includes `summaryId`).
+
+**Errors:** `403` upload not allowed on plan · `400` bad file
 
 ---
 
-### Chat — `/v1/chat`
+<a id="endpoint-post-v1-chat"></a>
 
----
+### `POST /v1/chat`
 
-#### `POST /v1/chat`
-
-**Auth:** Required  
-**Plans:** Basic (10 messages/summary), Premium (unlimited)
-
-Sends a message and receives an AI reply based on the summary content.
+**Auth:** required · **Plans:** Basic / Premium · **Limits:** Basic 10 msgs per summary thread
 
 **Request body**
+
 ```json
 {
-  "summaryId": "uuid",
-  "message": "What is the main argument of this article?",
+  "summaryId": "550e8400-e29b-41d4-a716-446655440000",
+  "message": "What is the main argument?",
   "history": [
-    { "role": "user",      "content": "Previous question" },
-    { "role": "assistant", "content": "Previous answer" }
+    { "role": "user", "content": "Earlier question…" },
+    { "role": "assistant", "content": "Earlier answer…" }
   ]
 }
 ```
 
-`history` is the conversation so far (excluding the new message). Pass `[]` for the first message.
-
 **Response `200`**
-```json
-{ "reply": "The main argument is..." }
-```
 
-**Error `404`** — summary not found or belongs to another user  
-**Error `403`** — chat not available on Free plan, or Basic message limit reached
+```json
+{ "reply": "…" }
+```
 
 ---
 
-#### `GET /v1/chat/:summaryId`
+<a id="endpoint-get-v1-chat-summaryid"></a>
 
-**Auth:** Required  
-**Plans:** Basic, Premium
+### `GET /v1/chat/:summaryId`
 
-Returns the full saved chat history for a summary.
+**Auth:** required
+
+**Purpose:** Fetch stored chat for a summary.
 
 **Response `200`**
+
 ```json
 {
   "messages": [
-    { "role": "user",      "content": "What is...", "created_at": "2026-05-07T..." },
-    { "role": "assistant", "content": "It is...",   "created_at": "2026-05-07T..." }
+    { "role": "user", "content": "…", "created_at": "2026-05-07T12:00:00.000Z" },
+    { "role": "assistant", "content": "…", "created_at": "2026-05-07T12:00:05.000Z" }
   ]
 }
 ```
 
 ---
 
-### Export — `/v1/export`
+<a id="endpoint-post-v1-export"></a>
 
----
+### `POST /v1/export`
 
-#### `POST /v1/export`
+**Auth:** required · **Plans:** Basic+
 
-**Auth:** Required  
-**Plans:** Basic, Premium
-
-Generates a downloadable file of a summary and returns a signed URL (valid 24 hours for Basic, 30 days for Premium).
+Generates markdown-aware export and returns signed storage URL.
 
 **Request body**
+
 ```json
 {
-  "summaryId": "uuid",
-  "format": "txt | pdf | docx"
+  "summaryId": "550e8400-e29b-41d4-a716-446655440000",
+  "format": "txt"
 }
 ```
 
+`format`: `pdf` \| `docx` \| `txt`
+
 **Response `200`**
+
 ```json
 {
-  "downloadUrl": "https://supabase-storage-url/...",
+  "downloadUrl": "https://…",
   "format": "pdf",
   "expiresIn": 86400
 }
 ```
 
-**Error `403`** — export not available on Free plan  
-**Error `404`** — summary not found
-
 ---
 
-### Social Media Images — `/v1/social-images`
+<a id="endpoint-post-v1-social-images"></a>
 
----
+### `POST /v1/social-images`
 
-#### `POST /v1/social-images`
+**Auth:** required · **Plans:** Basic (max 3) / Premium (max 6) cards per plan cap
 
-**Auth:** Required  
-**Plans:** Basic (max 3 cards), Premium (max 5 cards)
-
-Generates social media post card data from a summary using AI.
+Server clamps `count` to **between 1 and** `social_images` limit.
 
 **Request body**
+
 ```json
 {
-  "summaryId": "uuid",
+  "summaryId": "550e8400-e29b-41d4-a716-446655440000",
   "count": 3
 }
 ```
 
-`count` is clamped between 2 and the plan maximum.
-
 **Response `200`**
+
 ```json
 {
   "cards": [
     {
-      "headline": "Short punchy headline",
-      "body": "1-2 sentence insight from the content.",
-      "cta": "Read more today",
-      "theme": "blue | purple | teal | coral | amber"
+      "headline": "…",
+      "body": "…",
+      "cta": "…",
+      "theme": "blue"
     }
   ]
 }
 ```
 
-**Error `403`** — feature not available on Free plan
-
 ---
 
-### Slides — `/v1/slides`
+<a id="endpoint-post-v1-slides"></a>
 
----
+### `POST /v1/slides`
 
-#### `POST /v1/slides`
-
-**Auth:** Required  
-**Plans:** Premium only
-
-Generates and uploads a `.pptx` presentation from a summary. Returns a signed download URL valid for 7 days.
+**Auth:** required · **Plans:** Premium
 
 **Request body**
+
 ```json
 {
-  "summaryId": "uuid",
+  "summaryId": "550e8400-e29b-41d4-a716-446655440000",
   "slideCount": 8
 }
 ```
 
-`slideCount` is clamped between 5 and 15.
+`slideCount` is clamped (see implementation — typically ~5–15).
 
 **Response `200`**
+
 ```json
 {
-  "downloadUrl": "https://supabase-storage-url/....pptx",
+  "downloadUrl": "https://….pptx",
   "slideCount": 9
 }
 ```
 
-**Error `403`** — requires Premium plan
-
 ---
 
-### Users — `/v1/users`
+<a id="endpoint-get-v1-users-me"></a>
 
----
+### `GET /v1/users/me`
 
-#### `GET /v1/users/me`
+**Auth:** required · **Fast path** (no summary table aggregation)
 
-**Auth:** Required
-
-Returns the authenticated user's profile, current plan, and today's usage.
+Returns the user profile and per-plan **limits** (same envelope the extension needs for feature checks). Usage counts and time-saved totals are returned from [`GET /v1/users/stats`](#endpoint-get-v1-users-stats) when the client opens Stats / Profile.
 
 **Response `200`**
+
 ```json
 {
   "user": {
     "id": "uuid",
-    "email": "user@example.com",
-    "displayName": "Jane Smith",
-    "plan": "free | basic | premium",
-    "createdAt": "2026-01-01T00:00:00Z"
-  },
-  "usage": {
-    "summariesToday": 2,
-    "totalSummaries": 45,
-    "dailyLimit": 3
+    "email": "you@example.com",
+    "displayName": "Alex",
+    "plan": "basic",
+    "createdAt": "2026-01-01T00:00:00.000Z"
   },
   "limits": {
-    "summaries_per_day": 3,
-    "sizes_allowed": ["small"],
-    "pdf_upload": false,
-    "export": false,
-    "chat_messages_per_summary": 0,
-    "social_images": 0,
+    "summaries_per_day": 50,
+    "chat_messages_per_summary": 10,
+    "sizes_allowed": ["small", "medium", "large"],
+    "pdf_upload": true,
+    "export": true,
+    "audio": true,
+    "social_images": 3,
     "slides": false,
-    "max_file_mb": 0
+    "max_file_mb": 10
   }
 }
 ```
 
-`dailyLimit` is `null` for Premium (unlimited).
+---
+
+<a id="endpoint-get-v1-users-stats"></a>
+
+### `GET /v1/users/stats`
+
+**Auth:** required · **Heavier** — summary counts + rolled-up `time_saved_sec` sums (paginated internally). Call when the user opens **Stats** or **Profile**, not on every extension popup open.
+
+**Response `200`**
+
+```json
+{
+  "usage": {
+    "summariesToday": 2,
+    "summariesThisMonth": 18,
+    "totalSummaries": 45,
+    "dailyLimit": 50,
+    "monthlyLimit": null,
+    "timeSavedTodaySec": 1200,
+    "timeSavedThisMonthSec": 18000,
+    "timeSavedTotalSec": 42000
+  }
+}
+```
+
+`dailyLimit` is `null` for Premium (unlimited daily summaries). “Today” / month boundaries use **UTC**, same as stored `created_at`.
 
 ---
 
-#### `PATCH /v1/users/me`
+<a id="endpoint-patch-v1-users-me"></a>
 
-**Auth:** Required
+### `PATCH /v1/users/me`
 
-Updates the user's display name.
+**Auth:** required · **Purpose:** Display name update
 
 **Request body**
+
 ```json
-{ "displayName": "Jane Smith" }
+{ "displayName": "Alex Reader" }
 ```
 
 **Response `200`**
+
 ```json
 { "success": true }
 ```
 
 ---
 
-#### `POST /v1/users/subscribe`
+<a id="endpoint-post-v1-users-feedback"></a>
 
-**Auth:** Required
+### `POST /v1/users/feedback`
 
-Creates a Stripe Checkout session to upgrade to Basic or Premium.  
-Returns a URL — open it in a new browser tab to complete payment.  
-After successful payment, Stripe fires a webhook that automatically upgrades the user's plan in the database.
+**Auth:** required · **Rate limit:** ~15 submissions / hour per user (Express limiter)
 
 **Request body**
+
 ```json
-{ "plan": "basic | premium" }
+{
+  "category": "general",
+  "message": "The export button clipped on small screens.",
+  "extensionVersion": "1.0.0"
+}
 ```
+
+`category` ∈ `bug` \| `feature` \| `billing` \| `general` (unknown values fall back to `general`). `extensionVersion` optional string (≤ 64 chars).
 
 **Response `200`**
-```json
-{ "checkoutUrl": "https://checkout.stripe.com/..." }
-```
 
-**Error `503`** — `STRIPE_SECRET_KEY` or price ID not configured in Railway
+```json
+{ "success": true }
+```
 
 ---
 
-#### `POST /v1/users/billing-portal`
+<a id="endpoint-post-v1-users-subscribe"></a>
 
-**Auth:** Required  
-**Plans:** Basic, Premium (user must have an existing Stripe customer ID)
+### `POST /v1/users/subscribe`
 
-Opens the Stripe Customer Portal so the user can manage or cancel their subscription.
+**Auth:** required · **Purpose:** Stripe Checkout session for upgrading
 
-**Response `200`**
+**Request body**
+
 ```json
-{ "portalUrl": "https://billing.stripe.com/..." }
+{ "plan": "basic" }
 ```
 
-**Error `400`** — user has no billing account (never subscribed)
+(`"premium"` also supported.)
+
+**Response `200`**
+
+```json
+{
+  "checkoutUrl": "https://checkout.stripe.com/…",
+  "checkoutSessionId": "cs_test_…"
+}
+```
 
 ---
 
-#### `GET /v1/users/history`
+<a id="endpoint-post-v1-users-billing-portal"></a>
 
-**Auth:** Required
+### `POST /v1/users/billing-portal`
 
-Returns a paginated list of the user's past summaries.
-
-**Query params**
-
-| Param | Default | Description |
-|---|---|---|
-| `page` | `1` | Page number (20 results per page) |
+**Auth:** required · **Requires:** existing `stripe_customer_id`
 
 **Response `200`**
+
+```json
+{ "portalUrl": "https://billing.stripe.com/…" }
+```
+
+---
+
+<a id="endpoint-get-v1-users-history"></a>
+
+### `GET /v1/users/history?page=1`
+
+**Auth:** required · **Paging:** 20 rows per page
+
+**Response `200`**
+
 ```json
 {
   "summaries": [
     {
       "id": "uuid",
-      "source_url": "https://example.com",
+      "source_url": "https://…",
       "file_name": null,
       "size_requested": "medium",
       "summary_word_count": 180,
       "time_saved_sec": 220,
-      "created_at": "2026-05-07T00:00:00Z"
+      "created_at": "2026-05-07T12:00:00.000Z"
     }
   ],
   "total": 45,
@@ -508,43 +571,34 @@ Returns a paginated list of the user's past summaries.
 
 ---
 
-### Stripe Webhooks — `/webhooks/stripe`
+<a id="endpoint-post-webhooks-stripe"></a>
+
+### `POST /webhooks/stripe`
+
+**Called by Stripe only.** Raw JSON body — must **not** be pre-parsed as JSON middleware on this route (Express uses `express.raw` on this mount in `index.js`).
+
+Uses `stripe-signature` header and `STRIPE_WEBHOOK_SECRET`.
+
+Plans are updated from subscription events (`created`, `updated`, `deleted`). Do not invoke manually from clients.
 
 ---
 
-#### `POST /webhooks/stripe`
+## Required environment variables (Railway)
 
-**Auth:** Stripe webhook signature (`stripe-signature` header)  
-**Content-Type:** `application/octet-stream` (raw body — do not send JSON)
-
-Stripe calls this automatically after payment events. **Do not call this manually.**
-
-| Event handled | Action taken |
+| Variable | Purpose |
 |---|---|
-| `customer.subscription.created` | Sets user plan to `basic` or `premium` |
-| `customer.subscription.updated` | Updates user plan based on active price ID |
-| `customer.subscription.deleted` | Reverts user plan to `free` |
-| `invoice.payment_failed` | Logs warning (no plan change) |
-
-The webhook endpoint must be registered in the **Stripe Dashboard → Webhooks** pointing to:  
-`https://<your-railway-url>/webhooks/stripe`
-
----
-
-## Required Environment Variables (Railway)
-
-| Variable | Description |
-|---|---|
-| `FIREBASE_PROJECT_ID` | Firebase project ID |
-| `FIREBASE_CLIENT_EMAIL` | Firebase service account email |
-| `FIREBASE_PRIVATE_KEY` | Firebase service account private key (include `\n` line breaks) |
-| `SUPABASE_URL` | Supabase project URL (`https://xxx.supabase.co` — no trailing slash) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase `service_role` JWT (not the `anon` key) |
-| `GEMINI_API_KEY` | Google Gemini API key |
-| `STRIPE_SECRET_KEY` | Stripe secret key (`sk_live_...` or `sk_test_...`) |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`whsec_...`) |
-| `STRIPE_BASIC_PRICE_ID` | Stripe Price ID for Basic plan (`price_...`) |
-| `STRIPE_PREMIUM_PRICE_ID` | Stripe Price ID for Premium plan (`price_...`) |
-| `PORT` | Port to listen on (Railway sets this automatically) |
-| `NODE_ENV` | `production` in Railway prod service |
-| `BACKEND_URL` | *(Optional)* Only needed if running outside Railway |
+| `FIREBASE_PROJECT_ID` | Firebase Admin |
+| `FIREBASE_CLIENT_EMAIL` | Service account |
+| `FIREBASE_PRIVATE_KEY` | Service account PEM (`\n` preserved) |
+| `SUPABASE_URL` | Postgres + Storage |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side JWT |
+| `GEMINI_API_KEY` | Summaries / chat / extras |
+| `STRIPE_SECRET_KEY` | Payments |
+| `STRIPE_WEBHOOK_SECRET` | Webhook verification |
+| `STRIPE_BASIC_PRICE_ID` | Basic Stripe Price |
+| `STRIPE_PREMIUM_PRICE_ID` | Premium Stripe Price |
+| `CHROME_EXTENSION_ID` *(recommended prod)* | CORS allows only `chrome-extension://<id>` |
+| `FRONTEND_ORIGIN` *(optional)* | Extra allowed browser origin |
+| `BACKEND_URL` | Used in Stripe `success_url` / `cancel_url` |
+| `PORT` | Listen port (Railway injects) |
+| `NODE_ENV` | `production` in prod |

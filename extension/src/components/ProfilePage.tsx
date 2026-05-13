@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { updateProfile, subscribe, openBillingPortal } from '../lib/api';
+import { updateProfile, subscribe, openBillingPortal, getUsageStats } from '../lib/api';
 import { logout } from '../lib/firebase';
 import type { UsageStats } from '../store';
 
@@ -84,8 +84,19 @@ function getInitials(displayName: string): string {
 }
 
 export default function ProfilePage({ onBack }: ProfilePageProps) {
-  const { user, setUser, clearUser, usage } = useStore();
+  const { user, setUser, clearUser, usage, setUsage } = useStore();
   const [innerTab, setInnerTab] = useState<InnerTab>('profile');
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    getUsageStats()
+      .then(({ usage: u }) => {
+        if (!cancelled) setUsage(u);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user?.id, setUsage]);
 
   // Profile tab state
   const nameParts = (user?.displayName || '').trim().split(/\s+/);

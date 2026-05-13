@@ -38,7 +38,7 @@ export default function Header({ onSignInClick, onAvatarClick, feedbackOpen, onF
         <span style={{
           fontFamily: '"Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           fontWeight: 600,
-          fontSize: 15,
+          fontSize: Math.round(15 * 1.2),
           background: 'linear-gradient(135deg, #6d4af7 0%, #9580ff 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
@@ -51,7 +51,7 @@ export default function Header({ onSignInClick, onAvatarClick, feedbackOpen, onF
               onClick={onAvatarClick}
               title="View profile & billing"
               style={{
-                width: 28, height: 28, borderRadius: '50%',
+                width: Math.round(28 * 0.8), height: Math.round(28 * 0.8), borderRadius: '50%',
                 background: `linear-gradient(135deg, ${planColors[user.plan]}, ${planColors[user.plan]}bb)`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 10, fontWeight: 700, color: '#fff',

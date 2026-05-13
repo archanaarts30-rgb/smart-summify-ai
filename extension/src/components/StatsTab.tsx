@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore } from '../store';
+import { getUsageStats } from '../lib/api';
 
 /** Human-readable estimate from stored `time_saved_sec` totals (same semantics as summarize metrics). */
 function formatEstimatedTimeSaved(seconds: number | undefined): string {
@@ -19,7 +20,26 @@ function formatEstimatedTimeSaved(seconds: number | undefined): string {
 }
 
 export default function StatsTab() {
-  const { user, usage } = useStore();
+  const { user, usage, setUsage } = useStore();
+  const [loadState, setLoadState] = useState<'loading' | 'ok' | 'err'>('loading');
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setLoadState('loading');
+    getUsageStats()
+      .then(({ usage: u }) => {
+        if (!cancelled) {
+          setUsage(u);
+          setLoadState('ok');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoadState('err');
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, setUsage]);
+
   const plan = user?.plan || 'free';
 
   const monthName = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -41,6 +61,22 @@ export default function StatsTab() {
         <p style={{ fontSize: 12, color: 'var(--text2)' }}>
           Track every article and document you've summarized.
         </p>
+      </div>
+    );
+  }
+
+  if (loadState === 'loading' && !usage) {
+    return (
+      <div style={{ padding: 20, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>
+        Loading stats…
+      </div>
+    );
+  }
+
+  if (loadState === 'err' && !usage) {
+    return (
+      <div style={{ padding: 20, textAlign: 'center', color: 'var(--danger)', fontSize: 13 }}>
+        Couldn&apos;t load stats. Check your connection and try the Stats tab again.
       </div>
     );
   }

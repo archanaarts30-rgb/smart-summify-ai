@@ -40,8 +40,23 @@ async function sumTimeSavedSec(userId, minCreatedUtc) {
   return total;
 }
 
-// ─── Get current user profile + usage ──────────────────────────────
-router.get('/me', authenticate, async (req, res) => {
+// ─── Profile + plan limits (fast — no summary aggregates) ─────────
+router.get('/me', authenticate, (req, res) => {
+  const limits = PLAN_LIMITS[req.user.plan];
+  res.json({
+    user: {
+      id: req.user.id,
+      email: req.user.email,
+      displayName: req.user.display_name,
+      plan: req.user.plan,
+      createdAt: req.user.created_at,
+    },
+    limits,
+  });
+});
+
+// ─── Usage & reading-time aggregates (Stats tab / Profile) ─────────
+router.get('/stats', authenticate, async (req, res) => {
   const now   = new Date();
   const today = now.toISOString().split('T')[0];
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01T00:00:00Z`;
@@ -78,27 +93,19 @@ router.get('/me', authenticate, async (req, res) => {
     const limits = PLAN_LIMITS[req.user.plan];
 
     res.json({
-      user: {
-        id: req.user.id,
-        email: req.user.email,
-        displayName: req.user.display_name,
-        plan: req.user.plan,
-        createdAt: req.user.created_at,
-      },
       usage: {
         summariesToday,
         summariesThisMonth,
         totalSummaries,
         dailyLimit:   limits.summaries_per_day === Infinity ? null : limits.summaries_per_day,
-        monthlyLimit: null, // all plans are daily-limited, not monthly-capped
+        monthlyLimit: null,
         timeSavedTodaySec,
         timeSavedThisMonthSec,
         timeSavedTotalSec,
       },
-      limits,
     });
   } catch (err) {
-    console.error('[users/me]', err);
+    console.error('[users/stats]', err);
     res.status(500).json({ error: 'Could not load usage stats.' });
   }
 });

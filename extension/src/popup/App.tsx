@@ -36,7 +36,7 @@ export default function App() {
           if (res.ok) {
             const data = await res.json();
             setUser(data.user);
-            setUsage(data.usage ?? null);
+            setUsage(null);
           } else {
             setUser(fallbackUser);
           }
