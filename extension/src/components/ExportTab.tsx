@@ -111,7 +111,7 @@ export default function ExportTab() {
                   minWidth: 48,
                   height: 30,
                   fontSize: 12,
-                  fontWeight: 600,
+                  fontWeight: 400,
                   borderRadius: 8,
                   border: '1px solid var(--border)',
                   background: 'var(--bg)',

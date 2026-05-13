@@ -231,7 +231,18 @@ export default function SummaryTab() {
         incrementGuestCount();
       } else {
         result = await summarizeContent(response.content, effectiveSummarySize, response.url, targetLanguage);
-        if (usage) setUsage({ ...usage, summariesToday: usage.summariesToday + 1, summariesThisMonth: usage.summariesThisMonth + 1, totalSummaries: usage.totalSummaries + 1 });
+        if (usage) {
+          const d = Number(result.metrics?.timeSavedSec) || 0;
+          setUsage({
+            ...usage,
+            summariesToday: usage.summariesToday + 1,
+            summariesThisMonth: usage.summariesThisMonth + 1,
+            totalSummaries: usage.totalSummaries + 1,
+            timeSavedTodaySec: (usage.timeSavedTodaySec ?? 0) + d,
+            timeSavedThisMonthSec: (usage.timeSavedThisMonthSec ?? 0) + d,
+            timeSavedTotalSec: (usage.timeSavedTotalSec ?? 0) + d,
+          });
+        }
       }
       setCurrentSummary(result);
     } catch (e: any) {
@@ -246,8 +257,19 @@ export default function SummaryTab() {
     if (!selectedFile) return;
     setError(''); setLoading(true);
     try {
-      const result = await summarizeFile(selectedFile, effectiveSummarySize, targetLanguage);
-      if (usage) setUsage({ ...usage, summariesToday: usage.summariesToday + 1, summariesThisMonth: usage.summariesThisMonth + 1, totalSummaries: usage.totalSummaries + 1 });
+      const       result = await summarizeFile(selectedFile, effectiveSummarySize, targetLanguage);
+      if (usage) {
+        const d = Number(result.metrics?.timeSavedSec) || 0;
+        setUsage({
+          ...usage,
+          summariesToday: usage.summariesToday + 1,
+          summariesThisMonth: usage.summariesThisMonth + 1,
+          totalSummaries: usage.totalSummaries + 1,
+          timeSavedTodaySec: (usage.timeSavedTodaySec ?? 0) + d,
+          timeSavedThisMonthSec: (usage.timeSavedThisMonthSec ?? 0) + d,
+          timeSavedTotalSec: (usage.timeSavedTotalSec ?? 0) + d,
+        });
+      }
       setCurrentSummary(result);
     } catch (e: any) {
       setError(e.message || 'Document summarization failed. Please try again.');
@@ -655,7 +677,7 @@ export default function SummaryTab() {
                   minWidth: 44,
                   height: 26,
                   fontSize: 11,
-                  fontWeight: 600,
+                  fontWeight: 400,
                   borderRadius: 'var(--radius)',
                   border: '1px solid var(--border)',
                   background: 'var(--bg)',

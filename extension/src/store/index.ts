@@ -37,6 +37,10 @@ export interface UsageStats {
   summariesThisMonth: number;
   totalSummaries:     number;
   dailyLimit:         number | null; // null = unlimited
+  /** Sum of estimate `time_saved_sec` over summaries that match Today / calendar month / all time */
+  timeSavedTodaySec?:     number;
+  timeSavedThisMonthSec?: number;
+  timeSavedTotalSec?:     number;
 }
 
 interface AppState {

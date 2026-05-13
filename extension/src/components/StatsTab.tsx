@@ -1,6 +1,23 @@
 import React from 'react';
 import { useStore } from '../store';
 
+/** Human-readable estimate from stored `time_saved_sec` totals (same semantics as summarize metrics). */
+function formatEstimatedTimeSaved(seconds: number | undefined): string {
+  if (seconds == null) return '—';
+  const s = Math.max(0, Math.floor(seconds));
+  if (s === 0) return '0s';
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (s < 3600) {
+    const rem = s % 60;
+    return rem <= 0 ? `${m}m` : `${m}m ${rem}s`;
+  }
+  const h = Math.floor(s / 3600);
+  const rem = s % 3600;
+  const mm = Math.floor(rem / 60);
+  return mm <= 0 ? `${h}h` : `${h}h ${mm}m`;
+}
+
 export default function StatsTab() {
   const { user, usage } = useStore();
   const plan = user?.plan || 'free';
@@ -69,6 +86,12 @@ export default function StatsTab() {
                   ? 'You summarized 1 article today.'
                   : `You summarized ${dailyUsed} articles today.`}
             </div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6 }}>
+              Estimated reading time saved today:{' '}
+              <span style={{ fontWeight: 400, color: 'var(--text)' }}>
+                {formatEstimatedTimeSaved(usage.timeSavedTodaySec)}
+              </span>
+            </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 10 }}>
             <div style={{ fontSize: 22, fontWeight: 800, color: barColor, lineHeight: 1 }}>
@@ -119,6 +142,12 @@ export default function StatsTab() {
                   ? 'You summarized 1 article this month.'
                   : `You summarized ${usage.summariesThisMonth} articles this month.`}
             </div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6 }}>
+              Estimated reading time saved this month:{' '}
+              <span style={{ fontWeight: 400, color: 'var(--text)' }}>
+                {formatEstimatedTimeSaved(usage.timeSavedThisMonthSec)}
+              </span>
+            </div>
           </div>
           <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent)', marginLeft: 10 }}>
             {usage.summariesThisMonth}
@@ -142,6 +171,12 @@ export default function StatsTab() {
                 : usage.totalSummaries === 1
                   ? 'You\'ve summarized 1 article in total since joining.'
                   : `You've summarized ${usage.totalSummaries} articles in total since joining.`}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6 }}>
+              Estimated reading time saved (all time):{' '}
+              <span style={{ fontWeight: 400, color: 'var(--text)' }}>
+                {formatEstimatedTimeSaved(usage.timeSavedTotalSec)}
+              </span>
             </div>
           </div>
           <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent)', marginLeft: 10 }}>

@@ -17,19 +17,50 @@ const FEEDBACK_MAX_MESSAGE = 4000;
 
 const router = express.Router();
 
+/** Sum `time_saved_sec` for summaries (paginated; avoids default row-limit truncation). */
+async function sumTimeSavedSec(userId, minCreatedUtc) {
+  const pageSize = 1000;
+  let offset = 0;
+  let total = 0;
+  for (;;) {
+    let q = supabase
+      .from('summaries')
+      .select('time_saved_sec')
+      .eq('user_id', userId)
+      .order('id', { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (minCreatedUtc) q = q.gte('created_at', minCreatedUtc);
+    const { data, error } = await q;
+    if (error) throw error;
+    if (!data?.length) break;
+    for (const row of data) total += Number(row.time_saved_sec) || 0;
+    if (data.length < pageSize) break;
+    offset += pageSize;
+  }
+  return total;
+}
+
 // ─── Get current user profile + usage ──────────────────────────────
 router.get('/me', authenticate, async (req, res) => {
   const now   = new Date();
   const today = now.toISOString().split('T')[0];
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01T00:00:00Z`;
+  const todayStart = `${today}T00:00:00Z`;
 
-  const [{ count: summariesToday }, { count: summariesThisMonth }, { count: totalSummaries }] =
-    await Promise.all([
+  try {
+    const [
+      { count: summariesToday },
+      { count: summariesThisMonth },
+      { count: totalSummaries },
+      timeSavedTodaySec,
+      timeSavedThisMonthSec,
+      timeSavedTotalSec,
+    ] = await Promise.all([
       supabase
         .from('summaries')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', req.user.id)
-        .gte('created_at', `${today}T00:00:00Z`),
+        .gte('created_at', todayStart),
       supabase
         .from('summaries')
         .select('id', { count: 'exact', head: true })
@@ -39,27 +70,37 @@ router.get('/me', authenticate, async (req, res) => {
         .from('summaries')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', req.user.id),
+      sumTimeSavedSec(req.user.id, todayStart),
+      sumTimeSavedSec(req.user.id, monthStart),
+      sumTimeSavedSec(req.user.id, null),
     ]);
 
-  const limits = PLAN_LIMITS[req.user.plan];
+    const limits = PLAN_LIMITS[req.user.plan];
 
-  res.json({
-    user: {
-      id: req.user.id,
-      email: req.user.email,
-      displayName: req.user.display_name,
-      plan: req.user.plan,
-      createdAt: req.user.created_at,
-    },
-    usage: {
-      summariesToday,
-      summariesThisMonth,
-      totalSummaries,
-      dailyLimit:   limits.summaries_per_day === Infinity ? null : limits.summaries_per_day,
-      monthlyLimit: null, // all plans are daily-limited, not monthly-capped
-    },
-    limits,
-  });
+    res.json({
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        displayName: req.user.display_name,
+        plan: req.user.plan,
+        createdAt: req.user.created_at,
+      },
+      usage: {
+        summariesToday,
+        summariesThisMonth,
+        totalSummaries,
+        dailyLimit:   limits.summaries_per_day === Infinity ? null : limits.summaries_per_day,
+        monthlyLimit: null, // all plans are daily-limited, not monthly-capped
+        timeSavedTodaySec,
+        timeSavedThisMonthSec,
+        timeSavedTotalSec,
+      },
+      limits,
+    });
+  } catch (err) {
+    console.error('[users/me]', err);
+    res.status(500).json({ error: 'Could not load usage stats.' });
+  }
 });
 
 // ─── Update display name ────────────────────────────────────────────
