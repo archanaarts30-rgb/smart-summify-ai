@@ -1,5 +1,6 @@
 # ─── Dependencies ─────────────────────────────────────
 backend/node_modules/
+extension/node_modules/
 
 # ─── Environment variables (NEVER commit these) ───────
 *.env
