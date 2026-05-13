@@ -1,5 +1,8 @@
 import React from 'react';
 import { useStore } from '../store';
+import FeedbackIcon from '../icons/FeedbackIcon';
+import MoonIcon from '../icons/MoonIcon';
+import SunIcon from '../icons/SunIcon';
 
 interface HeaderProps {
   onSignInClick: () => void;
@@ -33,7 +36,9 @@ export default function Header({ onSignInClick, onAvatarClick, feedbackOpen, onF
       {/* Logo + user avatar + plan badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{
-          fontWeight: 800, fontSize: 15,
+          fontFamily: '"Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          fontWeight: 600,
+          fontSize: 15,
           background: 'linear-gradient(135deg, #6d4af7 0%, #9580ff 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
@@ -97,12 +102,20 @@ export default function Header({ onSignInClick, onAvatarClick, feedbackOpen, onF
             ...(feedbackOpen ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : {}),
           }}
         >
-          💬
+          <FeedbackIcon size={24} />
         </button>
 
-        {/* Dark mode toggle */}
-        <button onClick={toggleTheme} title="Toggle theme" style={iconBtn}>
-          {theme === 'dark' ? '☀' : '◑'}
+        {/* Dark mode toggle: moon → switch to dark, sun → switch to light */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={theme === 'dark'}
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-label={theme === 'dark' ? 'Dark mode on, switch to light' : 'Light mode on, switch to dark'}
+          style={iconBtn}
+        >
+          {theme === 'dark' ? <SunIcon size={24} /> : <MoonIcon size={24} />}
         </button>
 
         {/* Sign in button for guests; logged-in users use the avatar */}
@@ -127,6 +140,7 @@ export default function Header({ onSignInClick, onAvatarClick, feedbackOpen, onF
 }
 
 const iconBtn: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
   background: 'transparent', border: '1px solid var(--border)',
   borderRadius: 6, padding: '3px 7px', fontSize: 12,
   color: 'var(--text2)', cursor: 'pointer', fontWeight: 600,

@@ -469,7 +469,7 @@ export default function SummaryTab() {
           onClick={summarizePage}
           disabled={loading}
           className="btn"
-          style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 700, marginBottom: 14 }}
+          style={{ width: '100%', padding: '8.8px 11px', fontSize: 14, fontWeight: 700, marginBottom: 14 }}
         >
           {loading ? 'Summarizing...' : 'Summarize!!!'}
         </button>
@@ -479,7 +479,7 @@ export default function SummaryTab() {
           onClick={summarizePage}
           disabled={loading}
           className="btn"
-          style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 700, marginBottom: 14 }}
+          style={{ width: '100%', padding: '8.8px 11px', fontSize: 14, fontWeight: 700, marginBottom: 14 }}
         >
           {loading ? 'Summarizing...' : '↺ Re-summarize'}
         </button>

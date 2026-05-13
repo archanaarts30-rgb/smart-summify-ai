@@ -1,0 +1,27 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="feedbackGradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00C6FF"/>
+      <stop offset="50%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Chat bubble -->
+  <path
+    d="M5 4C3.895 4 3 4.895 3 6V13C3 14.105 3.895 15 5 15H7V19L11 15H17C18.105 15 19 14.105 19 13V6C19 4.895 18.105 4 17 4H5Z"
+    fill="url(#feedbackGradient)"
+  />
+
+  <!-- Text lines -->
+  <rect x="6.5" y="7" width="8" height="1.5" rx="0.75" fill="white" opacity="0.95"/>
+  <rect x="6.5" y="10" width="5.5" height="1.5" rx="0.75" fill="white" opacity="0.85"/>
+
+  <!-- Star badge -->
+  <circle cx="18.5" cy="17.5" r="3.5" fill="url(#feedbackGradient)"/>
+
+  <path
+    d="M18.5 15.8L19.1 17L20.4 17.2L19.45 18.1L19.7 19.4L18.5 18.75L17.3 19.4L17.55 18.1L16.6 17.2L17.9 17L18.5 15.8Z"
+    fill="white"
+  />
+</svg>

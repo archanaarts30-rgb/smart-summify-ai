@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/montserrat": "^5.2.8",
     "@types/dompurify": "^3.0.5",
     "dompurify": "^3.4.2",
     "firebase": "^10.12.0",
