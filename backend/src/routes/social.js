@@ -19,7 +19,7 @@ router.post('/', authenticate, async (req, res) => {
     const { summaryId, count = 3 } = req.body;
 
     const clampedCount = Math.min(
-      Math.max(2, parseInt(count) || 3),
+      Math.max(1, parseInt(count, 10) || 3),
       limits.social_images
     );
 

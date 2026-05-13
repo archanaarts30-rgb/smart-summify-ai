@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { exportSummary, generateSocialImages, generateSlides } from '../lib/api';
 
@@ -12,7 +12,12 @@ export default function ExportTab() {
   const plan = user?.plan || 'free';
   const canExport = plan !== 'free';
   const canSlides = plan === 'premium';
-  const maxImages = plan === 'premium' ? 5 : plan === 'basic' ? 3 : 0;
+  const maxImages = plan === 'premium' ? 6 : plan === 'basic' ? 3 : 0;
+
+  useEffect(() => {
+    if (maxImages <= 0) return;
+    setSocialCount((c) => Math.min(Math.max(c, 1), maxImages));
+  }, [maxImages]);
 
   if (!currentSummary) {
     return (
@@ -95,32 +100,40 @@ export default function ExportTab() {
           Social media cards {!canExport && '🔒'}
         </p>
         {canExport && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <label style={{ fontSize: 12, color: 'var(--text2)' }}>Cards:</label>
-            {[2, 3, 4, 5].filter(n => n <= maxImages).map(n => (
-              <button
-                key={n}
-                onClick={() => setSocialCount(n)}
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'nowrap' }}>
+              <label style={{ fontSize: 12, color: 'var(--text2)', flexShrink: 0 }}>Cards</label>
+              <select
+                value={socialCount}
+                onChange={(e) => setSocialCount(Number(e.target.value))}
                 style={{
-                  width: 28, height: 28, borderRadius: 6, fontSize: 12, fontWeight: 600,
-                  background: socialCount === n ? 'var(--accent)' : 'var(--bg2)',
-                  color: socialCount === n ? '#fff' : 'var(--text)',
-                  border: '1px solid ' + (socialCount === n ? 'var(--accent)' : 'var(--border)'),
+                  marginLeft: 'auto',
+                  minWidth: 48,
+                  height: 30,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg)',
+                  color: 'var(--text)',
+                  padding: '0 8px',
                   cursor: 'pointer',
                 }}
               >
-                {n}
-              </button>
-            ))}
+                {Array.from({ length: maxImages }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1}</option>
+                ))}
+              </select>
+            </div>
             <button
               onClick={handleSocialImages}
               disabled={!!loading}
               className="btn"
-              style={{ marginLeft: 'auto', fontSize: 12, padding: '6px 12px' }}
+              style={{ width: '100%', fontSize: 12, padding: '8px 12px', marginBottom: 10 }}
             >
               {loading === 'social' ? 'Generating...' : 'Generate'}
             </button>
-          </div>
+          </>
         )}
 
         {socialCards.length > 0 && (

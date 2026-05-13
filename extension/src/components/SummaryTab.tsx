@@ -180,7 +180,12 @@ export default function SummaryTab() {
   const canExport       = plan !== 'free';
   const canChat         = plan !== 'free';
   const canSlides       = plan === 'premium';
-  const maxSocialImages = plan === 'premium' ? 5 : plan === 'basic' ? 3 : 0;
+  const maxSocialImages = plan === 'premium' ? 6 : plan === 'basic' ? 3 : 0;
+
+  useEffect(() => {
+    if (maxSocialImages <= 0) return;
+    setSocialCount((c) => Math.min(Math.max(c, 1), maxSocialImages));
+  }, [maxSocialImages]);
   const guestLimitReached = isGuest && guestSummaryCount >= GUEST_FREE_LIMIT;
 
   // Store clamps `summarySize` to small for authenticated free tier; guard still matches guest UI (`plan`).
@@ -632,14 +637,38 @@ export default function SummaryTab() {
           border: `1px solid ${maxSocialImages > 0 ? 'rgba(124,58,237,0.35)' : 'var(--border)'}`,
           background: maxSocialImages > 0 ? 'rgba(124,58,237,0.05)' : 'var(--bg2)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
-            <span style={{ color: '#7c3aed', display: 'flex' }}><Icons.Image /></span>
-            <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 12 }}>Social Posts</span>
-            {maxSocialImages === 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'nowrap' }}>
+            <span style={{ color: '#7c3aed', display: 'flex', flexShrink: 0 }}><Icons.Image /></span>
+            <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 12, flexShrink: 0 }}>Social Posts</span>
+            {maxSocialImages === 0 ? (
               <span style={{
                 fontSize: 9, padding: '1px 5px', borderRadius: 99, fontWeight: 700,
                 background: 'rgba(124,58,237,0.15)', color: '#7c3aed', marginLeft: 'auto',
               }}>BASIC+</span>
+            ) : (
+              <select
+                value={socialCount}
+                onChange={(e) => setSocialCount(Number(e.target.value))}
+                disabled={!currentSummary}
+                style={{
+                  marginLeft: 'auto',
+                  minWidth: 44,
+                  height: 26,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  borderRadius: 'var(--radius)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg)',
+                  color: 'var(--text)',
+                  padding: '0 6px',
+                  cursor: currentSummary ? 'pointer' : 'not-allowed',
+                  opacity: currentSummary ? 1 : 0.65,
+                }}
+              >
+                {Array.from({ length: maxSocialImages }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1}</option>
+                ))}
+              </select>
             )}
           </div>
           {!currentSummary ? (
@@ -652,23 +681,10 @@ export default function SummaryTab() {
               Upgrade to unlock
             </button>
           ) : (
-            <>
-              <div style={{ display: 'flex', gap: 3, marginBottom: 5 }}>
-                {[2, 3, 4, 5].filter(n => n <= maxSocialImages).map(n => (
-                  <button key={n} onClick={() => setSocialCount(n)} style={{
-                    width: 22, height: 22, borderRadius: 5, fontSize: 11, fontWeight: 600,
-                    background: socialCount === n ? '#7c3aed' : 'var(--bg)',
-                    color: socialCount === n ? '#fff' : 'var(--text)',
-                    border: '1px solid ' + (socialCount === n ? '#7c3aed' : 'var(--border)'),
-                    cursor: 'pointer',
-                  }}>{n}</button>
-                ))}
-              </div>
-              <button onClick={handleSocialImages} disabled={socialLoading} className="btn"
-                style={{ width: '100%', fontSize: 11, padding: '5px' }}>
-                {socialLoading ? '...' : 'Generate'}
-              </button>
-            </>
+            <button onClick={handleSocialImages} disabled={socialLoading || !currentSummary} className="btn"
+              style={{ width: '100%', fontSize: 11, padding: '5px' }}>
+              {socialLoading ? '...' : 'Generate'}
+            </button>
           )}
           {socialError && <p style={{ fontSize: 10, color: 'var(--danger)', margin: '4px 0 0' }}>{socialError}</p>}
         </div>

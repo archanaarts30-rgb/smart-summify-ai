@@ -32,7 +32,7 @@ const PLAN_LIMITS = {
     pdf_upload: true,
     export: true,
     audio: true,
-    social_images: 5,
+    social_images: 6,
     slides: true,
     max_file_mb: 50,
   },
