@@ -99,7 +99,9 @@ export default function Header({ onSignInClick, onAvatarClick, feedbackOpen, onF
           aria-label="Send feedback"
           style={{
             ...iconBtn,
-            ...(feedbackOpen ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : {}),
+            ...(feedbackOpen
+              ? { background: 'rgba(109, 74, 247, 0.12)' }
+              : {}),
           }}
         >
           <FeedbackIcon size={24} />
@@ -126,7 +128,7 @@ export default function Header({ onSignInClick, onAvatarClick, feedbackOpen, onF
             style={{
               ...iconBtn,
               color: 'var(--accent)',
-              borderColor: 'var(--accent)',
+              border: '1px solid var(--accent)',
               fontWeight: 700,
               padding: '3px 10px',
             }}
@@ -141,7 +143,7 @@ export default function Header({ onSignInClick, onAvatarClick, feedbackOpen, onF
 
 const iconBtn: React.CSSProperties = {
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  background: 'transparent', border: '1px solid var(--border)',
+  background: 'transparent', border: 'none',
   borderRadius: 6, padding: '3px 7px', fontSize: 12,
   color: 'var(--text2)', cursor: 'pointer', fontWeight: 600,
 };

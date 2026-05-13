@@ -3,89 +3,203 @@ const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = require('docx');
 const { authenticate, requireFeature } = require('../middleware/auth');
 const supabase  = require('../config/supabase');
+const {
+  markdownToBlocks,
+  segmentsToWords,
+  blocksToPlainText,
+} = require('../utils/summaryMarkdown');
 
 const router = express.Router();
 
-// ─── Helpers ────────────────────────────────────────────────────────
+// ─── PDF helpers (markdown-aware, mixed bold) ─────────────────────────
 
-/** Wrap plain text into lines no wider than maxChars. */
-function wrapText(text, maxChars = 90) {
-  const lines = [];
-  for (const paragraph of text.split('\n')) {
-    if (!paragraph.trim()) { lines.push(''); continue; }
-    const words = paragraph.split(' ');
-    let line = '';
-    for (const word of words) {
-      if ((line + (line ? ' ' : '') + word).length > maxChars) {
-        if (line) lines.push(line);
-        line = word;
-      } else {
-        line = line ? `${line} ${word}` : word;
-      }
+function pdfMeasureToken(tok, fonts, fs) {
+  const f = tok.bold ? fonts.bold : fonts.regular;
+  return f.widthOfTextAtSize(tok.text, fs);
+}
+
+function splitOversizedToken(tok, fonts, fs, maxW) {
+  if (pdfMeasureToken(tok, fonts, fs) <= maxW) return [tok];
+  const chunks = [];
+  const f = tok.bold ? fonts.bold : fonts.regular;
+  let acc = '';
+  for (let i = 0; i < tok.text.length; i++) {
+    const ch = tok.text[i];
+    const next = acc + ch;
+    if (next && f.widthOfTextAtSize(next, fs) > maxW && acc) {
+      chunks.push({ bold: tok.bold, text: acc });
+      acc = ch;
+    } else {
+      acc = next;
     }
-    if (line) lines.push(line);
   }
+  if (acc) chunks.push({ bold: tok.bold, text: acc });
+  return chunks;
+}
+
+function wrapPdfTokens(rawTokens, maxW, fonts, fs) {
+  const normalized = [];
+  rawTokens.forEach((t) => normalized.push(...splitOversizedToken(t, fonts, fs, maxW)));
+
+  const lines = [];
+  let cur = [];
+  let lineW = 0;
+
+  const flush = () => {
+    if (cur.length) { lines.push(cur); cur = []; lineW = 0; }
+  };
+
+  for (const tok of normalized) {
+    const tw = pdfMeasureToken(tok, fonts, fs);
+    if (tw > maxW) {
+      flush();
+      lines.push([tok]);
+      continue;
+    }
+    if (lineW + tw > maxW && cur.length) flush();
+    cur.push(tok);
+    lineW += tw;
+  }
+  flush();
   return lines;
 }
 
-/** Build a proper PDF buffer using pdf-lib. */
+/** Build a proper PDF buffer using pdf-lib (renders markdown structure). */
 async function buildPdf(summary) {
   const pdfDoc  = await PDFDocument.create();
-  const regular = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const bold    = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fonts = {
+    regular: await pdfDoc.embedFont(StandardFonts.Helvetica),
+    bold: await pdfDoc.embedFont(StandardFonts.HelveticaBold),
+  };
 
-  const pageW = 595, pageH = 842; // A4 points
-  const margin = 56, lineH = 18, titleSize = 18, bodySize = 12, metaSize = 10;
+  const pageW = 595; const pageH = 842;
+  const margin = 56;
+  const minBottom = 52;
   const textW = pageW - margin * 2;
+  const titleSize = 18;
+  const metaSize = 10;
+  const bodySize = 12;
+  const bodyColor = rgb(0.14, 0.14, 0.14);
+  /** Font size by heading depth (# = 1 … ###### = 6) */
+  const headingSizes = [17, 15, 14, 13, 12, 12];
 
   let page = pdfDoc.addPage([pageW, pageH]);
-  let y = pageH - 60;
+  let y = pageH - 56;
 
   const newPage = () => {
     page = pdfDoc.addPage([pageW, pageH]);
-    y = pageH - 60;
+    y = pageH - 56;
   };
 
-  const drawLine = (text, font, size, color = rgb(0.1, 0.1, 0.1), extraGap = 0) => {
-    if (y < 60) newPage();
+  const drawPlain = (text, font, size, color, gapAfter) => {
+    if (y < minBottom) newPage();
     page.drawText(text, { x: margin, y, font, size, color, maxWidth: textW });
-    y -= (size + extraGap + 4);
+    y -= size + gapAfter;
   };
 
-  // Title
-  drawLine('Smart Summify — Summary', bold, titleSize, rgb(0.1, 0.05, 0.5), 8);
+  drawPlain('Smart Summify — Summary', fonts.bold, titleSize, rgb(0.1, 0.05, 0.5), 10);
 
-  // Source / file
   const source = summary.source_url || summary.file_name;
   if (source) {
-    drawLine(source.length > 90 ? source.slice(0, 87) + '...' : source, regular, metaSize, rgb(0.4, 0.4, 0.8), 4);
+    const s = source.length > 90 ? `${source.slice(0, 87)}...` : source;
+    drawPlain(s, fonts.regular, metaSize, rgb(0.4, 0.4, 0.8), 6);
   }
 
-  // Date
   const dateStr = summary.created_at
     ? new Date(summary.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  drawLine(dateStr, regular, metaSize, rgb(0.5, 0.5, 0.5), 10);
+  drawPlain(dateStr, fonts.regular, metaSize, rgb(0.5, 0.5, 0.5), 12);
 
-  // Divider line
-  if (y > 60) {
-    page.drawLine({ start: { x: margin, y }, end: { x: pageW - margin, y }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
+  if (y > minBottom + 20) {
+    page.drawLine({
+      start: { x: margin, y },
+      end: { x: pageW - margin, y },
+      thickness: 0.5,
+      color: rgb(0.8, 0.8, 0.8),
+    });
     y -= 16;
   }
 
-  // Body text — wrap and flow across pages
-  const lines = wrapText(summary.summary_text, 85);
-  for (const line of lines) {
-    if (!line) { y -= lineH * 0.5; continue; }
-    if (y < 60) newPage();
-    page.drawText(line, { x: margin, y, font: regular, size: bodySize, color: rgb(0.15, 0.15, 0.15), maxWidth: textW });
-    y -= lineH;
+  const blocks = markdownToBlocks(summary.summary_text || '');
+
+  for (const b of blocks) {
+    if (b.type === 'blank') {
+      y -= 10;
+      continue;
+    }
+
+    if (b.type === 'heading') {
+      const fs = headingSizes[Math.min(Math.max(b.level, 1), 6) - 1];
+      const headingWords = segmentsToWords(b.segments).map((w) => ({ bold: true, text: w.text }));
+      const lines = wrapPdfTokens(headingWords, textW, fonts, fs);
+      for (const line of lines) {
+        if (y < minBottom + fs + 8) newPage();
+        let x = margin;
+        const fnBold = fonts.bold;
+        for (const tok of line) {
+          page.drawText(tok.text, { x, y, font: fnBold, size: fs, color: rgb(0.08, 0.08, 0.2), maxWidth: textW });
+          x += fnBold.widthOfTextAtSize(tok.text, fs);
+        }
+        y -= fs + 9;
+      }
+      y -= 6;
+      continue;
+    }
+
+    if (b.type === 'list_item') {
+      const indentX = 12 + b.indent * 14;
+      const prefix = b.ordered ? `${b.orderNum}. ` : '• ';
+      const merged = [{ bold: false, text: prefix }, ...segmentsToWords(b.segments)];
+      const lines = wrapPdfTokens(merged, textW - indentX, fonts, bodySize);
+      for (const line of lines) {
+        if (y < minBottom + bodySize + 6) newPage();
+        let x = margin + indentX;
+        for (const tok of line) {
+          const fn = tok.bold ? fonts.bold : fonts.regular;
+          page.drawText(tok.text, { x, y, font: fn, size: bodySize, color: bodyColor, maxWidth: textW - indentX });
+          x += fn.widthOfTextAtSize(tok.text, bodySize);
+        }
+        y -= bodySize + 8;
+      }
+      continue;
+    }
+
+    /* paragraph */
+    const lines = wrapPdfTokens(segmentsToWords(b.segments), textW, fonts, bodySize);
+    for (const line of lines) {
+      if (y < minBottom + bodySize + 6) newPage();
+      let x = margin;
+      for (const tok of line) {
+        const fn = tok.bold ? fonts.bold : fonts.regular;
+        page.drawText(tok.text, { x, y, font: fn, size: bodySize, color: bodyColor, maxWidth: textW });
+        x += fn.widthOfTextAtSize(tok.text, bodySize);
+      }
+      y -= bodySize + 8;
+    }
+    y -= 4;
   }
 
   return Buffer.from(await pdfDoc.save());
 }
 
-/** Build a proper DOCX buffer using the docx library. */
+// ─── DOCX helpers ────────────────────────────────────────────────────
+
+const HEADING_LEVELS = [
+  HeadingLevel.HEADING_1,
+  HeadingLevel.HEADING_2,
+  HeadingLevel.HEADING_3,
+  HeadingLevel.HEADING_4,
+  HeadingLevel.HEADING_5,
+  HeadingLevel.HEADING_6,
+];
+
+function docxRunsFromSegments(segments, halfPt = 24) {
+  return segments.map(
+    (s) => new TextRun({ text: s.text, bold: !!s.bold, size: halfPt }),
+  );
+}
+
+/** Build a proper DOCX buffer (markdown headings, bullets, bold). */
 async function buildDocx(summary) {
   const source  = summary.source_url || summary.file_name;
   const dateStr = summary.created_at
@@ -112,12 +226,46 @@ async function buildDocx(summary) {
     spacing: { after: 200 },
   }));
 
-  // Body — one paragraph per line (preserving blank-line spacing)
-  const paragraphs = summary.summary_text.split('\n');
-  for (const p of paragraphs) {
+  const blocks = markdownToBlocks(summary.summary_text || '');
+
+  for (const b of blocks) {
+    if (b.type === 'blank') {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: '', size: 2 })],
+        spacing: { after: 100 },
+      }));
+      continue;
+    }
+
+    if (b.type === 'heading') {
+      const lvl = HEADING_LEVELS[Math.min(Math.max(b.level, 1), 6) - 1];
+      const sizeMap = [40, 36, 32, 28, 26, 24];
+      const sz = sizeMap[Math.min(Math.max(b.level, 1), 6) - 1];
+      children.push(new Paragraph({
+        children: b.segments.map((s) => new TextRun({ text: s.text, bold: true, size: sz })),
+        heading: lvl,
+        spacing: { before: 120, after: 80 },
+      }));
+      continue;
+    }
+
+    if (b.type === 'list_item') {
+      const leftTwip = 360 + Math.min(b.indent, 8) * 280;
+      const prefix = b.ordered ? `${b.orderNum}. ` : '• ';
+      children.push(new Paragraph({
+        children: [
+          new TextRun({ text: prefix, size: 24 }),
+          ...docxRunsFromSegments(b.segments, 24),
+        ],
+        indent: { left: leftTwip },
+        spacing: { after: 80 },
+      }));
+      continue;
+    }
+
     children.push(new Paragraph({
-      children: [new TextRun({ text: p || '', size: 24 })],
-      spacing: { after: p.trim() ? 120 : 60 },
+      children: docxRunsFromSegments(b.segments, 24),
+      spacing: { after: 140 },
       alignment: AlignmentType.LEFT,
     }));
   }
@@ -154,13 +302,9 @@ router.post('/', authenticate, requireFeature('export'), async (req, res) => {
 
     let fileBuffer;
     let mimeType;
-    // Deterministic path: re-exporting the same summary+format overwrites the
-    // previous file (upsert:true actually triggers) instead of accumulating
-    // unlimited orphan files in Supabase Storage.
     const fileName = `exports/${req.user.id}/${summaryId}.${format}`;
 
     if (format === 'txt') {
-      // Include source + date as a header in the text file
       const source  = summary.source_url || summary.file_name || '';
       const dateStr = summary.created_at ? new Date(summary.created_at).toLocaleString() : '';
       const header  = [
@@ -169,8 +313,9 @@ router.post('/', authenticate, requireFeature('export'), async (req, res) => {
         dateStr ? `Created: ${dateStr}` : '',
         '='.repeat(36),
         '',
-      ].filter(l => l !== null).join('\n');
-      fileBuffer = Buffer.from(header + summary.summary_text, 'utf-8');
+      ].join('\n');
+      const body = blocksToPlainText(markdownToBlocks(summary.summary_text || ''));
+      fileBuffer = Buffer.from(`${header}${body}`, 'utf-8');
       mimeType   = 'text/plain; charset=utf-8';
     } else if (format === 'pdf') {
       fileBuffer = await buildPdf(summary);
@@ -180,16 +325,12 @@ router.post('/', authenticate, requireFeature('export'), async (req, res) => {
       mimeType   = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     }
 
-    // ─── Upload to Supabase Storage ──────────────────────────
     const { error: uploadError } = await supabase.storage
       .from('exports')
       .upload(fileName, fileBuffer, { contentType: mimeType, upsert: true });
 
     if (uploadError) throw uploadError;
 
-    // ─── Signed URL — force download in browser ──────────────
-    // download:true adds Content-Disposition: attachment so the browser
-    // downloads the file rather than displaying it inline (critical for TXT).
     const expiresIn = req.user.plan === 'premium' ? 60 * 60 * 24 * 30 : 60 * 60 * 24;
     const { data: urlData, error: urlError } = await supabase.storage
       .from('exports')

@@ -5,6 +5,7 @@ import {
   summarizeContent, summarizeContentGuest, summarizeFile,
   subscribe, exportSummary, generateSocialImages, generateSlides, sendChatMessage,
 } from '../lib/api';
+import LangIcon from '../icons/LangIcon';
 
 // ─── Inline SVG Icons ────────────────────────────────────────────────────────
 const Ico = ({ d, size = 16 }: { d: string | string[]; size?: number }) => (
@@ -27,7 +28,6 @@ const Icons = {
   Chat:      () => <Ico d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />,
   Slides:    () => <Ico d={["M2 3h20v14H2z","M8 21h8","M12 17v4","M7 9h.01","M11 9h6","M7 12h.01","M11 12h4"]} />,
   Image:     () => <Ico d={["M4 3h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z","M3 15l5-5 4 4 3-3 6 6","M14.5 8a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"]} />,
-  Globe:     () => <Ico d={["M12 2a10 10 0 100 20A10 10 0 0012 2z","M2 12h20","M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"]} />,
   ChevDown:  () => <Ico d="M6 9l6 6 6-6" />,
   Trash:     () => <Ico d={["M3 6h18","M8 6V4h8v2","M19 6l-1 14H6L5 6"]} />,
 };
@@ -376,20 +376,29 @@ export default function SummaryTab() {
       {/* ══════════════════════════════════════════════════════════════
           ROW 1: Source tabs + Language picker (ALWAYS VISIBLE)
       ══════════════════════════════════════════════════════════════ */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 12 }}>
 
-        {/* Source tabs */}
+        {/* Source tabs — same outer height as language row */}
         <div style={{
-          display: 'flex', gap: 3, padding: 3, flex: 1,
+          display: 'flex', gap: 2, padding: 2, flex: 1,
+          minHeight: 28,
           background: 'var(--bg2)', borderRadius: 'var(--radius-lg)',
           border: '1px solid var(--border)',
+          alignItems: 'stretch',
         }}>
           {(['page', 'document'] as SourceMode[]).map(mode => (
             <button
               key={mode}
+              type="button"
               onClick={() => { setSourceMode(mode); setError(''); }}
               style={{
-                flex: 1, padding: '7px 4px', fontSize: 12, fontWeight: 600,
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 5px',
+                fontSize: 11,
+                fontWeight: 600,
                 borderRadius: 'var(--radius)',
                 border: 'none',
                 background: sourceMode === mode ? 'var(--accent)' : 'transparent',
@@ -405,20 +414,22 @@ export default function SummaryTab() {
         {/* Language picker */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
-          padding: '5px 8px',
+          minHeight: 28,
+          padding: '0 7px',
           background: 'var(--bg2)', border: '1px solid var(--border)',
           borderRadius: 'var(--radius-lg)',
         }}>
-          <span style={{ color: 'var(--text2)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-            <Icons.Globe />
+          <span title="Summary language" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <LangIcon size={18} />
           </span>
           <select
             value={targetLanguage}
             onChange={e => setTargetLanguage(e.target.value)}
             style={{
-              background: 'var(--bg2)', border: 'none', outline: 'none',
+              background: 'transparent', border: 'none', outline: 'none',
               color: 'var(--text)', fontSize: 11, fontWeight: 500,
               cursor: 'pointer', maxWidth: 100,
+              height: 22, lineHeight: '22px', padding: '0 2px',
             }}
           >
             {LANGUAGES.map(l => (
@@ -469,7 +480,7 @@ export default function SummaryTab() {
           onClick={summarizePage}
           disabled={loading}
           className="btn"
-          style={{ width: '100%', padding: '8.8px 11px', fontSize: 14, fontWeight: 700, marginBottom: 14 }}
+          style={{ width: '100%', padding: '6px 8px', fontSize: 13, fontWeight: 700, marginBottom: 14 }}
         >
           {loading ? 'Summarizing...' : 'Summarize!!!'}
         </button>
@@ -479,7 +490,7 @@ export default function SummaryTab() {
           onClick={summarizePage}
           disabled={loading}
           className="btn"
-          style={{ width: '100%', padding: '8.8px 11px', fontSize: 14, fontWeight: 700, marginBottom: 14 }}
+          style={{ width: '100%', padding: '6px 8px', fontSize: 13, fontWeight: 700, marginBottom: 14 }}
         >
           {loading ? 'Summarizing...' : '↺ Re-summarize'}
         </button>
@@ -524,7 +535,7 @@ export default function SummaryTab() {
                 onClick={summarizeDocument}
                 disabled={loading}
                 className="btn"
-                style={{ width: '100%', padding: '10px', fontSize: 13, fontWeight: 700 }}
+                style={{ width: '100%', padding: '7px', fontSize: 12, fontWeight: 700 }}
               >
                 {loading ? 'Summarizing...' : 'Summarize Document'}
               </button>
@@ -805,32 +816,58 @@ export default function SummaryTab() {
           {/* ── Chat button — below summary box ── */}
           <div style={{ marginBottom: 8 }}>
             {canChat ? (
-              <button
-                onClick={() => setShowChat(v => !v)}
-                className="btn-ghost"
-                style={{
-                  width: '100%', padding: '8px 14px', fontSize: 13, fontWeight: 600,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                  color: showChat ? 'var(--accent)' : 'var(--text)',
-                  borderColor: showChat ? 'var(--accent)' : 'var(--border)',
-                  background: showChat ? 'rgba(109,74,247,0.07)' : 'transparent',
-                }}
-              >
-                <Icons.Chat />
-                {showChat ? 'Close chat' : 'Ask a question'}
-              </button>
+              showChat ? (
+                <button
+                  type="button"
+                  onClick={() => setShowChat(false)}
+                  className="btn-ghost"
+                  style={{
+                    width: '100%', padding: '6px 10px', fontSize: 12, fontWeight: 600,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    color: 'var(--accent)',
+                    borderColor: 'var(--accent)',
+                    background: 'rgba(109, 74, 247, 0.08)',
+                  }}
+                >
+                  <Icons.Chat />
+                  Close chat
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowChat(true)}
+                  className="btn"
+                  style={{
+                    width: '100%', padding: '7px 11px', fontSize: 13, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    boxShadow: '0 3px 12px rgba(109, 74, 247, 0.35)',
+                  }}
+                  title="Open chat about this summary"
+                >
+                  <Ico d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" size={16} />
+                  Ask a question
+                </button>
+              )
             ) : (
               <button
+                type="button"
                 className="btn-ghost"
                 onClick={handleUpgrade}
                 style={{
-                  width: '100%', padding: '8px 14px', fontSize: 13, fontWeight: 600,
+                  width: '100%', padding: '7px 11px', fontSize: 13, fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                  color: 'var(--text2)', opacity: 0.7,
+                  color: 'var(--text)',
+                  borderWidth: 2,
+                  borderStyle: 'solid',
+                  borderColor: '#d97706',
+                  background: 'rgba(217, 119, 6, 0.08)',
+                  opacity: 1,
                 }}
               >
                 <Icons.Chat />
-                Ask a question — <span style={{ color: '#d97706' }}>Upgrade to Basic</span>
+                <span>
+                  Ask a question — <span style={{ color: '#d97706' }}>Upgrade to Basic</span>
+                </span>
               </button>
             )}
           </div>
@@ -849,7 +886,7 @@ export default function SummaryTab() {
                 padding: '8px 12px', background: 'var(--bg2)',
                 borderBottom: '1px solid var(--border)',
               }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
                   💬 Ask about this content
                 </span>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -871,8 +908,12 @@ export default function SummaryTab() {
                 display: 'flex', flexDirection: 'column', gap: 7, background: 'var(--bg)',
               }}>
                 {chatHistory.length === 0 && (
-                  <div style={{ color: 'var(--text2)', fontSize: 12, textAlign: 'center', padding: '10px 0' }}>
-                    Ask anything about this content...
+                  <div style={{
+                    color: 'var(--text2)', fontSize: 12, textAlign: 'center', padding: '12px 8px',
+                    fontWeight: 500, border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)',
+                    marginBottom: 4, background: 'var(--bg)',
+                  }}>
+                    Type a question below about this summary…
                   </div>
                 )}
                 {chatHistory.map((msg, i) => (
@@ -906,12 +947,12 @@ export default function SummaryTab() {
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendChat()}
-                  placeholder="Ask a question..."
+                  placeholder="Type your question..."
                   disabled={chatLoading}
                   style={{
-                    flex: 1, padding: '6px 10px', fontSize: 12,
-                    background: 'var(--bg2)', border: '1px solid var(--border)',
-                    color: 'var(--text)', outline: 'none',
+                    flex: 1, padding: '8px 11px', fontSize: 13,
+                    background: 'var(--bg2)', border: '2px solid var(--accent)',
+                    color: 'var(--text)', outline: 'none', borderRadius: 'var(--radius-sm)',
                   }}
                 />
                 <button onClick={sendChat} disabled={chatLoading || !chatInput.trim()}
