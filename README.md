@@ -220,7 +220,7 @@ Products created in Test mode do NOT carry over to Live mode — you must recrea
 1. **Products** (in Live mode) → **+ Add product**
 2. Create **Basic** plan:
    - Name: `Basic`
-   - Add a price: Recurring, monthly, your price (e.g. $4.99/month)
+   - Add a price: Recurring, monthly, your price (e.g. **$4.99**/month Basic, **$8.99**/month Premium)
    - Click **Save product**
    - Copy the `price_live_...` **Price ID** (NOT the product ID which starts with `prod_`)
    - Add to Railway prod as `STRIPE_BASIC_PRICE_ID`
@@ -417,7 +417,7 @@ Once approved, the extension gets a **permanent store ID**.
 | Chat messages per summary | 0 | 10 | Unlimited |
 | File uploads | 1/day (≤10 MB) | Yes (up to 10 MB) | Yes (up to 50 MB) |
 | Export (PDF, DOCX, TXT) | No | Yes | Yes |
-| Social media posts | No | Up to 3 | Up to 5 |
+| Social media posts | No | Up to 3 | Up to 6 |
 | PPT Slides | No | No | Yes |
 | Guest (no login) summaries | 3 per IP per 24h | — | — |
 

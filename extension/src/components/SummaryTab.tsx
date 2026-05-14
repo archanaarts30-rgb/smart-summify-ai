@@ -546,7 +546,7 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
       )}
       {fileUploadLimitReached && !dailyLimitReached && uploadCap != null && (
         <div style={{
-          marginBottom: 12, padding: '9px 12px', borderRadius: 'var(--radius-lg)', fontSize: 12,
+          marginBottom: 12, padding: '8px 10px', borderRadius: 'var(--radius-lg)', fontSize: 9.6,
           background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412',
         }}>
           Daily limit of {uploadCap} document upload{uploadCap === 1 ? '' : 's'} reached.{' '}
@@ -606,37 +606,28 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
             </div>
           ) : (
             <>
-              {plan === 'free' && (
-                <p style={{ fontSize: 11, color: 'var(--text2)', margin: '0 0 10px', lineHeight: 1.45 }}>
-                  <strong>Free plan:</strong> 1 document upload per day · counts toward your 3 daily summaries · max {maxUploadMb} MB
-                </p>
-              )}
               {selectedFile ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                borderRadius: 'var(--radius-lg)', background: 'var(--bg2)',
-                border: '1px solid var(--border)',
-              }}>
-                <span style={{ fontSize: 18 }}>📄</span>
-                <span style={{
-                  flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--text)',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{selectedFile.name}</span>
-                <span style={{ fontSize: 11, color: 'var(--text2)', flexShrink: 0 }}>
-                  {(selectedFile.size / 1024).toFixed(0)} KB
-                </span>
-                <button onClick={removeFile}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)', fontSize: 16, lineHeight: 1 }}
-                  title="Remove file">✕</button>
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <button
+                type="button"
                 onClick={summarizeDocument}
                 disabled={loading || dailyLimitReached || fileUploadLimitReached}
                 className="btn"
                 style={{ width: '100%', padding: '7px', fontSize: 12, fontWeight: 700 }}
               >
                 {loading ? 'Summarizing...' : 'Summarize Document'}
+              </button>
+              <button
+                type="button"
+                onClick={removeFile}
+                disabled={loading}
+                style={{
+                  background: 'none', border: 'none', cursor: loading ? 'wait' : 'pointer',
+                  fontSize: 11, color: 'var(--text2)', textDecoration: 'underline', padding: '2px 0',
+                  alignSelf: 'center',
+                }}
+              >
+                Choose a different file
               </button>
             </div>
           ) : (

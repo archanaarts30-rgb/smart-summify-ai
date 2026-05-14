@@ -239,7 +239,7 @@ export default function StatsTab() {
         </span>
         {plan === 'free' && (
           <div style={{ marginTop: 5, color: 'var(--text2)' }}>
-            Upgrade to <strong style={{ color: '#d97706' }}>Basic</strong> for 20/day with Medium & Full summaries,
+            Upgrade to <strong style={{ color: '#d97706' }}>Basic</strong> for 30/day with Medium & Full summaries,
             or <strong style={{ color: '#7c3aed' }}>Premium</strong> for unlimited.
           </div>
         )}

@@ -172,7 +172,7 @@ const firebaseConfig = {
 6. **Add product**
    - **Name:** Smart Summify — Premium  
    - **Description:** (internal) unlimited, slides, social cards, etc.  
-   - **Pricing:** **$12.99 USD** → **Monthly (recurring)**  
+   - **Pricing:** **$8.99 USD** → **Monthly (recurring)**  
    - **Statement descriptor:** `SMARTSUMMIFY PREMIUM`  
    - **Save**
 7. Copy **Price ID** → **`STRIPE_PREMIUM_PRICE_ID`**

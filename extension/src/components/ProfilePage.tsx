@@ -44,7 +44,7 @@ const PLAN_CONFIG = {
     features: [
       '30 summaries per day',
       'Short, Medium & Full summaries',
-      'File upload (PDF, Word)',
+      'File upload (PDF, Word, ≤10 MB)',
       'Export to PDF / Word / Text',
       'Chat with content',
       'Copy & Text-to-speech',
@@ -57,14 +57,14 @@ const PLAN_CONFIG = {
   },
   premium: {
     label: 'Premium',
-    price: '$9.99',
+    price: '$8.99',
     period: 'per month',
     color: '#7c3aed',
     gradient: 'linear-gradient(135deg, #7c3aed, #a855f7)',
     features: [
       'Unlimited summaries',
       'Short, Medium & Full summaries',
-      'File upload (PDF, Word)',
+      'File upload (PDF, Word, ≤50 MB)',
       'Export to PDF / Word / Text',
       'Chat with content',
       'Social media image generation',

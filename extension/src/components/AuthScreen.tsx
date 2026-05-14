@@ -54,7 +54,7 @@ export default function AuthScreen({ onClose }: AuthScreenProps) {
 
   return (
     <div style={{
-      background: 'var(--bg)', minHeight: '100vh',
+      background: 'var(--bg)',
       display: 'flex', flexDirection: 'column',
     }}>
       {/* Top bar */}
@@ -71,17 +71,11 @@ export default function AuthScreen({ onClose }: AuthScreenProps) {
         <div style={{ width: 56 }} />
       </div>
 
-      <div style={{ flex: 1, padding: '28px 24px 24px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, padding: '16px 20px 20px', display: 'flex', flexDirection: 'column' }}>
 
         {/* Heading */}
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: 14, margin: '0 auto 14px',
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 26, boxShadow: '0 4px 14px rgba(99,102,241,0.35)',
-          }}>✦</div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', marginBottom: 6, letterSpacing: '-0.3px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: '0 0 6px', letterSpacing: '-0.3px' }}>
             {mode === 'login' ? 'Welcome back' : 'Create your account'}
           </h1>
 
@@ -96,9 +90,13 @@ export default function AuthScreen({ onClose }: AuthScreenProps) {
             </div>
           ) : (
             <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
-              {mode === 'login'
-                ? 'Sign in to access your summaries and history.'
-                : 'Free account · 3 summaries/day · No credit card needed.'}
+              {mode === 'login' ? (
+                'Sign in to access your summaries and history.'
+              ) : (
+                <strong style={{ color: 'var(--text)', fontWeight: 700 }}>
+                  Free account · 3 summaries/day · No credit card needed.
+                </strong>
+              )}
             </p>
           )}
         </div>

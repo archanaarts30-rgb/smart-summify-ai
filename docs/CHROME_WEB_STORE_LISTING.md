@@ -42,7 +42,7 @@ Busy professionals, researchers, students, and anyone drowning in newsletters, d
 
 **Plans & fairness**
 
-Try for free at a light daily pace; upgrade **Basic** for document upload, richer lengths, exports, and chat—or **Premium** for unlimited daily summaries, slides, and more social captions.
+Try **Free** with a light daily pace and **one document upload per day** (within your summary quota); upgrade **Basic** for higher daily limits, unrestricted document uploads (up to file size caps), richer lengths, exports, and chat—or **Premium** for unlimited daily summaries, slides, and more social captions.
 
 Privacy-minded: summaries are tied to **your authenticated account**; sign in securely; we outline data handling in your published privacy policy linked from the store.
 
