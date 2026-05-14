@@ -1,6 +1,6 @@
 # Chrome Web Store — listing copy & SEO helpers
 
-Use the sections below for the **Chrome Web Store Developer Dashboard**. They are tuned for searchable keywords while staying accurate.
+Use the sections below for the **Chrome Web Store Developer Dashboard**. They are tuned for searchable keywords while staying accurate with the current product (extension + backend limits).
 
 ---
 
@@ -14,7 +14,7 @@ Use the sections below for the **Chrome Web Store Developer Dashboard**. They ar
 
 ## Short description (≤ 132 characters)
 
-**Summarize articles & PDFs in one click—short or detailed, many languages—then chat, export, or grab social captions.**
+**Summarize articles & PDFs in one click—65+ output languages—then chat, export, or grab social captions (plans vary).**
 
 *(Character count varies with spaces; tighten if the dashboard rejects it.)*
 
@@ -30,21 +30,26 @@ Busy professionals, researchers, students, and anyone drowning in newsletters, d
 
 **What you can do**
 
-- **Summarize any webpage** you are on—from news and blogs to long-form articles—with **Short**, **Medium**, or **Full** length (where your plan allows).
-- **Summarize PDFs & Word (.doc / .docx) and plain text uploads** — ideal for manuals, coursework, reports, contracts, ebooks, transcripts, resumes, and long internal docs.
-- **Choose output language**: auto-detect or pick from many languages (picker shows languages in native script so speakers can recognize their option instantly).
-- **Listen** with browser text-to-speech on supported plans.
-- **Chat with your summary** — ask questions, drill into details, and compare ideas (**Basic** gets a generous per-summary limit; **Premium** is unlimited on our side).
-- **Export** summaries to **PDF, Word (.docx), or plain text** with readable headings and lists—not raw Markdown blobs.
-- **Social post ideas**: generate numbered card captions for LinkedIn/X/threads workflows.
-- **Presentation export (Premium)** — structured **PowerPoint (.pptx)** from your summary outline.
-- **History & stats** — revisit past summaries; see summaries today/this month and **estimated reading time saved** over different periods.
+- **Summarize any webpage** you are on—from news and blogs to long-form articles—with **Short**, **Medium**, or **Full** length (**Free** is Short only; **Basic** and **Premium** unlock longer lengths).
+- **Summarize uploads** — **Free** includes **one PDF, Word (.docx), or plain text upload per day** (counts toward your daily summary limit, up to **10 MB** per file). **Basic** and **Premium** support larger workloads and higher file-size caps (**Premium** up to **50 MB** per file).
+- **Choose output language** — **Auto** or **65+ named languages** in the picker (labels shown in native script where helpful so you can find your language quickly).
+- **Listen** with browser text-to-speech where your plan allows.
+- **Chat with your summary** — ask questions and drill into details (**Basic**: generous per-summary message cap; **Premium**: unlimited chat on our side).
+- **Export** summaries to **PDF, Word (.docx), or plain text** with readable headings and lists—not raw Markdown blobs (**Basic** and **Premium**).
+- **Social post ideas** — generate card-style captions for your workflow (**Basic** up to **3** cards per request; **Premium** up to **6**).
+- **Presentation export** — structured **PowerPoint (.pptx)** from your summary (**Premium**).
+- **History & stats** — revisit past summaries; see usage today / this month and **estimated reading time saved** over different periods.
+- **Light and dark themes** — comfortable reading in the popup.
 
-**Plans & fairness**
+**Plans & fairness (summary)**
 
-Try **Free** with a light daily pace and **one document upload per day** (within your summary quota); upgrade **Basic** for higher daily limits, unrestricted document uploads (up to file size caps), richer lengths, exports, and chat—or **Premium** for unlimited daily summaries, slides, and more social captions.
+- **Free** — **3 summaries per day**, **Short** length only, **1 document upload per day** (within that limit), copy & listen. Sign in to sync history.
+- **Basic** — **$4.99/month** (billed via Stripe): **30 summaries per day**, Short/Medium/Full, document uploads (up to **10 MB**), export, chat. No social image generator or slides on Basic.
+- **Premium** — **$8.99/month** (billed via Stripe): **Unlimited** daily summaries, **50 MB** uploads, export, unlimited chat on our side, **social images**, **PowerPoint** export, and **all Basic** features.
 
-Privacy-minded: summaries are tied to **your authenticated account**; sign in securely; we outline data handling in your published privacy policy linked from the store.
+Upgrade, compare plans, and manage billing from **Account → Plan & Billing** inside the extension. Payments are handled by **Stripe**; you can use the customer portal from there when subscribed.
+
+Privacy-minded: summaries are tied to **your authenticated account**; sign in securely; describe data handling in your published **Privacy Policy** linked from the store.
 
 ---
 
@@ -52,33 +57,38 @@ Privacy-minded: summaries are tied to **your authenticated account**; sign in se
 
 Pick the primary category **Productivity** (or **Tools** if Productivity unavailable). Supplement with user-facing tags you paste into screenshots / support pages:
 
-`summarize website`, `ai summarizer chrome extension`, `pdf summary extension`, `web page summarizer`, `research tool`, `read later`, `document ai`, `text summary`, `productivity chrome`, `gpt alternative summary`, `study tool chrome extension`
+`summarize website`, `ai summarizer chrome extension`, `pdf summary extension`, `web page summarizer`, `multilingual summary`, `research tool`, `read later`, `document ai`, `text summary`, `productivity chrome`, `study tool chrome extension`
 
 ---
 
 ## Screenshot captions (ideas for overlays)
 
-1. **One-click summary** — Short · Medium · Full length on any page  
-2. **PDF & Word** — Upload and summarize dense documents  
-3. **Chat your content** — Ask follow-ups grounded in the summary  
-4. **Export** — Share clean PDF/DOCX/TXT  
-5. **Social captions** — Turn insights into posts  
-6. **Stats** — Reading time saved this month  
+1. **One-click summary** — Short · Medium · Full (by plan) on any page  
+2. **PDF & Word** — Upload and summarize dense documents (limits by plan)  
+3. **65+ languages** — Auto-detect or pick your output language  
+4. **Chat your content** — Ask follow-ups grounded in the summary  
+5. **Export** — Share clean PDF/DOCX/TXT  
+6. **Social captions** — Turn insights into posts (Basic & Premium)  
+7. **Slides** — Deck from your summary (Premium)  
+8. **Stats** — Reading time saved this month  
+9. **Dark mode** — Easy on the eyes  
 
 ---
 
 ## Promo video script hook (≤ 30s)
 
-“Open Smart Summify on any article—it reads the clutter so you keep the takeaway. Upgrade for PDF uploads, unlimited chat & exports.”
+“Smart Summify turns long pages and uploads into a clean summary—pick from dozens of languages, then chat or export. Start free; upgrade to Basic from about five dollars a month or Premium for slides and more.”
+
+*(Tighten or swap dollar amounts if your live Stripe prices differ.)*
 
 ---
 
 ## Privacy Policy checklist (mention in Privacy tab)
 
-Firebase authentication, Stripe for billing URLs, Gemini (or whichever model you advertise) processing text you submit, encrypted transit, retention window you actually enforce—copy from your real policy.
+Firebase authentication, Stripe for checkout and customer portal URLs, your AI provider (e.g. Google Gemini) processing text you submit, encrypted transit, data retention and deletion—**copy from your real policy**; keep this listing aligned with what you publish.
 
 ---
 
 ## Support / contact snippet
 
-“You can submit feedback inside the extension (feedback icon). For billing use the Stripe customer portal linked from Profile.” — adjust to match your UX.
+“You can submit feedback inside the extension (feedback icon). For billing, open **Account → Plan & Billing** and use the Stripe customer portal or upgrade flow shown there.” — adjust to match your UX.
