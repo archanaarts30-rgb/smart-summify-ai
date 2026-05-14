@@ -412,7 +412,7 @@ Once approved, the extension gets a **permanent store ID**.
 
 | Feature | Free | Basic | Premium |
 |---|---|---|---|
-| Summaries per day | 3 | 50 | Unlimited |
+| Summaries per day | 3 | 30 | Unlimited |
 | Summary sizes | Short only | Short, Medium, Full | Short, Medium, Full |
 | Chat messages per summary | 0 | 10 | Unlimited |
 | File uploads | No | Yes (up to 10 MB) | Yes (up to 50 MB) |

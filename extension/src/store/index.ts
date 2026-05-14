@@ -49,7 +49,7 @@ export function emptyUsageForPlan(plan: Plan): UsageStats {
     summariesToday: 0,
     summariesThisMonth: 0,
     totalSummaries: 0,
-    dailyLimit: plan === 'premium' ? null : plan === 'basic' ? 50 : 3,
+    dailyLimit: plan === 'premium' ? null : plan === 'basic' ? 30 : 3,
     timeSavedTodaySec: 0,
     timeSavedThisMonthSec: 0,
     timeSavedTotalSec: 0,

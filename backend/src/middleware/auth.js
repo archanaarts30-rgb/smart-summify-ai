@@ -15,7 +15,7 @@ const PLAN_LIMITS = {
     max_file_mb: 0,
   },
   basic: {
-    summaries_per_day: 50,
+    summaries_per_day: 30,
     chat_messages_per_summary: 10,
     sizes_allowed: ['small', 'medium', 'large'],
     pdf_upload: true,

@@ -197,6 +197,12 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
   // Store clamps `summarySize` to small for authenticated free tier; guard still matches guest UI (`plan`).
   const effectiveSummarySize = (plan === 'free' ? 'small' : summarySize) as typeof SIZE_STEPS[number];
 
+  const usageForQuota = usage ?? emptyUsageForPlan(plan);
+  const dailyLimitReached =
+    !isGuest &&
+    usageForQuota.dailyLimit !== null &&
+    usageForQuota.summariesToday >= usageForQuota.dailyLimit;
+
   // Close export menu on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -227,6 +233,7 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
   // ── Summarize page ────────────────────────────────────────────────
   const summarizePage = async () => {
     if (guestLimitReached) { setShowAuthModal(true); return; }
+    if (dailyLimitReached) return;
     setError(''); setLoading(true);
     try {
       const response = await chrome.runtime.sendMessage({ type: 'FETCH_PAGE_CONTENT' });
@@ -260,6 +267,7 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
   // ── Summarize document ────────────────────────────────────────────
   const summarizeDocument = async () => {
     if (!selectedFile) return;
+    if (dailyLimitReached) return;
     setError(''); setLoading(true);
     try {
       const result = await summarizeFile(selectedFile, effectiveSummarySize, targetLanguage);
@@ -500,6 +508,24 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
         </div>
       </div>
 
+      {dailyLimitReached && (
+        <div style={{
+          marginBottom: 12, padding: '9px 12px', borderRadius: 'var(--radius-lg)', fontSize: 12,
+          background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412',
+        }}>
+          Daily limit of {usageForQuota.dailyLimit} summaries reached.{' '}
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={handleUpgrade}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleUpgrade(); } }}
+            style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Upgrade for more
+          </span>
+        </div>
+      )}
+
       {/* ══════════════════════════════════════════════════════════════
           ACTION AREA — changes by mode
       ══════════════════════════════════════════════════════════════ */}
@@ -508,7 +534,7 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
       {sourceMode === 'page' && !currentSummary && (
         <button
           onClick={summarizePage}
-          disabled={loading}
+          disabled={loading || dailyLimitReached}
           className="btn"
           style={{ width: '100%', padding: '6px 8px', fontSize: 13, fontWeight: 700, marginBottom: 14 }}
         >
@@ -518,7 +544,7 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
       {sourceMode === 'page' && currentSummary && (
         <button
           onClick={summarizePage}
-          disabled={loading}
+          disabled={loading || dailyLimitReached}
           className="btn"
           style={{ width: '100%', padding: '6px 8px', fontSize: 13, fontWeight: 700, marginBottom: 14 }}
         >
@@ -563,7 +589,7 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
               </div>
               <button
                 onClick={summarizeDocument}
-                disabled={loading}
+                disabled={loading || dailyLimitReached}
                 className="btn"
                 style={{ width: '100%', padding: '7px', fontSize: 12, fontWeight: 700 }}
               >
@@ -1034,16 +1060,15 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
       )}
 
       {/* ── Upgrade prompt for free users ── */}
-      {!isGuest && plan === 'free' && !currentSummary && (
+      {!isGuest && plan === 'free' && !currentSummary && !dailyLimitReached && (
         <div style={{
           marginTop: 10, padding: '9px 12px', background: '#f5f3ff',
           border: '1px solid #ddd6fe', borderRadius: 'var(--radius-lg)', fontSize: 12, color: '#5b21b6',
         }}>
-          <strong>Free plan:</strong>{' '}
-          3 summaries per day, Short length only — upgrade for longer summaries, higher limits, and more tools.{' '}
+          3 summaries per day,{' '}
           <span onClick={handleUpgrade}
             style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
-            View Plan & Billing →
+            Upgrade for more
           </span>
         </div>
       )}

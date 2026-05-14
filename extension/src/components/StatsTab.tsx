@@ -46,7 +46,7 @@ export default function StatsTab() {
 
   const planLimits: Record<string, { daily: number | null; label: string; color: string }> = {
     free:    { daily: 3,    label: 'Free',    color: '#71717a' },
-    basic:   { daily: 20,   label: 'Basic',   color: '#d97706' },
+    basic:   { daily: 30,   label: 'Basic',   color: '#d97706' },
     premium: { daily: null, label: 'Premium', color: '#7c3aed' },
   };
   const planInfo = planLimits[plan] ?? planLimits.free;

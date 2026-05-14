@@ -58,7 +58,7 @@ Aligned with [`backend/src/middleware/auth.js`](../backend/src/middleware/auth.j
 
 | Feature | Free | Basic | Premium |
 |---|---|---|---|
-| Summaries per day | 3 | 50 | Unlimited |
+| Summaries per day | 3 | 30 | Unlimited |
 | Summary lengths | Short | Short, Medium, Full | Short, Medium, Full |
 | PDF / document upload | — | ✓ (≤ 10 MB) | ✓ (≤ 50 MB) |
 | Export PDF / DOCX / TXT | — | ✓ | ✓ |
@@ -415,7 +415,7 @@ Returns the user profile and per-plan **limits** (same envelope the extension ne
     "createdAt": "2026-01-01T00:00:00.000Z"
   },
   "limits": {
-    "summaries_per_day": 50,
+    "summaries_per_day": 30,
     "chat_messages_per_summary": 10,
     "sizes_allowed": ["small", "medium", "large"],
     "pdf_upload": true,
@@ -444,7 +444,7 @@ Returns the user profile and per-plan **limits** (same envelope the extension ne
     "summariesToday": 2,
     "summariesThisMonth": 18,
     "totalSummaries": 45,
-    "dailyLimit": 50,
+    "dailyLimit": 30,
     "monthlyLimit": null,
     "timeSavedTodaySec": 1200,
     "timeSavedThisMonthSec": 18000,
