@@ -37,6 +37,10 @@ export interface UsageStats {
   summariesThisMonth: number;
   totalSummaries:     number;
   dailyLimit:         number | null; // null = unlimited
+  /** Summaries created today from an uploaded file (not webpage). */
+  fileUploadsToday?:     number;
+  /** Max document-based summaries per day; null = no separate cap (Basic+). */
+  fileUploadDailyLimit?: number | null;
   /** Sum of estimate `time_saved_sec` over summaries that match Today / calendar month / all time */
   timeSavedTodaySec?:     number;
   timeSavedThisMonthSec?: number;
@@ -50,6 +54,8 @@ export function emptyUsageForPlan(plan: Plan): UsageStats {
     summariesThisMonth: 0,
     totalSummaries: 0,
     dailyLimit: plan === 'premium' ? null : plan === 'basic' ? 30 : 3,
+    fileUploadsToday: 0,
+    fileUploadDailyLimit: plan === 'free' ? 1 : null,
     timeSavedTodaySec: 0,
     timeSavedThisMonthSec: 0,
     timeSavedTotalSec: 0,

@@ -7,18 +7,21 @@ const PLAN_LIMITS = {
     summaries_per_day: 3,
     chat_messages_per_summary: 0,
     sizes_allowed: ['small'],
-    pdf_upload: false,
+    pdf_upload: true,
+    /** Separate cap on document summarizations per day (counts rows with `file_name` set). */
+    file_uploads_per_day: 1,
     export: false,
     audio: false,
     social_images: 0,
     slides: false,
-    max_file_mb: 0,
+    max_file_mb: 10,
   },
   basic: {
     summaries_per_day: 30,
     chat_messages_per_summary: 10,
     sizes_allowed: ['small', 'medium', 'large'],
     pdf_upload: true,
+    file_uploads_per_day: null,
     export: true,
     audio: true,
     social_images: 3,
@@ -30,6 +33,7 @@ const PLAN_LIMITS = {
     chat_messages_per_summary: Infinity,
     sizes_allowed: ['small', 'medium', 'large'],
     pdf_upload: true,
+    file_uploads_per_day: null,
     export: true,
     audio: true,
     social_images: 6,
@@ -135,4 +139,38 @@ async function checkSummaryQuota(req, res, next) {
   next();
 }
 
-module.exports = { authenticate, requireFeature, checkSummaryQuota, PLAN_LIMITS };
+// ─── Document upload daily quota (only plans with finite file_uploads_per_day) ───
+async function checkFileUploadDailyQuota(req, res, next) {
+  const cap = req.planLimits.file_uploads_per_day;
+  if (cap == null || cap === Infinity) return next();
+
+  const today = new Date().toISOString().split('T')[0];
+  const { count, error } = await supabase
+    .from('summaries')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', req.user.id)
+    .gte('created_at', `${today}T00:00:00Z`)
+    .not('file_name', 'is', null);
+
+  if (error) {
+    console.error('[auth] file upload quota count failed:', error);
+    return res.status(500).json({ error: 'Could not verify upload quota.' });
+  }
+  if (count >= cap) {
+    const label = cap === 1 ? 'document upload' : 'document uploads';
+    return res.status(429).json({
+      error: `Daily limit of ${cap} ${label} reached.`,
+      reset_at: `${today}T23:59:59Z`,
+      current_plan: req.user.plan,
+    });
+  }
+  next();
+}
+
+module.exports = {
+  authenticate,
+  requireFeature,
+  checkSummaryQuota,
+  checkFileUploadDailyQuota,
+  PLAN_LIMITS,
+};

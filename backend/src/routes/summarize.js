@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { rateLimit } = require('express-rate-limit');
-const { authenticate, checkSummaryQuota } = require('../middleware/auth');
+const { authenticate, checkSummaryQuota, checkFileUploadDailyQuota } = require('../middleware/auth');
 const { summarize, summarizeGuest } = require('../services/summarizeService');
 const { extractText } = require('../services/documentService');
 
@@ -107,11 +107,11 @@ router.post('/', authenticate, checkSummaryQuota, async (req, res) => {
   }
 });
 
-// Middleware: reject file upload for free-plan users before multer buffers anything
+// Middleware: plan must allow file upload (free tier: yes, with daily document cap)
 function requireUploadPlan(req, res, next) {
   if (!req.planLimits?.pdf_upload) {
     return res.status(403).json({
-      error: 'File upload requires Basic or Premium plan.',
+      error: 'File upload is not available on your plan.',
       current_plan: req.user?.plan,
     });
   }
@@ -123,7 +123,8 @@ router.post(
   '/file',
   authenticate,
   checkSummaryQuota,
-  requireUploadPlan,         // reject free-plan users before RAM allocation
+  checkFileUploadDailyQuota,
+  requireUploadPlan,
   rejectOversizedUpload,     // reject by Content-Length header before buffering
   upload.single('file'),
   async (req, res) => {

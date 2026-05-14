@@ -132,6 +132,16 @@ interface SummaryTabProps {
   onOpenPlanBilling: () => void;
 }
 
+/** Backend `checkSummaryQuota` — keep in sync with `auth.js` error text */
+function isDailySummaryLimitError(message: string): boolean {
+  return /^Daily limit of \d+ summaries reached\.?$/i.test(String(message).trim());
+}
+
+/** Backend `checkFileUploadDailyQuota` */
+function isDailyDocumentUploadLimitError(message: string): boolean {
+  return /^Daily limit of \d+ document uploads? reached\.?$/i.test(String(message).trim());
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
   const {
@@ -182,7 +192,7 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
   const isGuest         = !user;
   const plan            = user?.plan || 'free';
   const allowedSizes    = plan === 'free' ? ['small'] : ['small', 'medium', 'large'];
-  const canUpload       = plan !== 'free';
+  const maxUploadMb     = plan === 'premium' ? 50 : 10;
   const canExport       = plan !== 'free';
   const canChat         = plan !== 'free';
   const canSlides       = plan === 'premium';
@@ -202,6 +212,13 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
     !isGuest &&
     usageForQuota.dailyLimit !== null &&
     usageForQuota.summariesToday >= usageForQuota.dailyLimit;
+
+  const uploadCap = usageForQuota.fileUploadDailyLimit ?? null;
+  const fileUploadLimitReached =
+    !isGuest &&
+    uploadCap != null &&
+    uploadCap > 0 &&
+    (usageForQuota.fileUploadsToday ?? 0) >= uploadCap;
 
   // Close export menu on outside click
   useEffect(() => {
@@ -268,6 +285,7 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
   const summarizeDocument = async () => {
     if (!selectedFile) return;
     if (dailyLimitReached) return;
+    if (fileUploadLimitReached) return;
     setError(''); setLoading(true);
     try {
       const result = await summarizeFile(selectedFile, effectiveSummarySize, targetLanguage);
@@ -278,6 +296,7 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
         summariesToday: base.summariesToday + 1,
         summariesThisMonth: base.summariesThisMonth + 1,
         totalSummaries: base.totalSummaries + 1,
+        fileUploadsToday: (base.fileUploadsToday ?? 0) + 1,
         timeSavedTodaySec: (base.timeSavedTodaySec ?? 0) + d,
         timeSavedThisMonthSec: (base.timeSavedThisMonthSec ?? 0) + d,
         timeSavedTotalSec: (base.timeSavedTotalSec ?? 0) + d,
@@ -525,6 +544,23 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
           </span>
         </div>
       )}
+      {fileUploadLimitReached && !dailyLimitReached && uploadCap != null && (
+        <div style={{
+          marginBottom: 12, padding: '9px 12px', borderRadius: 'var(--radius-lg)', fontSize: 12,
+          background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412',
+        }}>
+          Daily limit of {uploadCap} document upload{uploadCap === 1 ? '' : 's'} reached.{' '}
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={handleUpgrade}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleUpgrade(); } }}
+            style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Upgrade for more
+          </span>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════
           ACTION AREA — changes by mode
@@ -555,20 +591,27 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
       {/* DOCUMENT MODE */}
       {sourceMode === 'document' && (
         <div style={{ marginBottom: 14 }}>
-          {!canUpload ? (
+          {isGuest ? (
             <div style={{
               padding: '16px', borderRadius: 'var(--radius-lg)', textAlign: 'center',
               border: '2px dashed var(--border)', background: 'var(--bg2)',
             }}>
-              <div style={{ fontSize: 24, marginBottom: 6 }}>📄</div>
+              <div style={{ fontSize:24, marginBottom: 6 }}>📄</div>
               <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10 }}>
-                Document upload requires <strong>Basic</strong> or <strong>Premium</strong>.
+                <strong>Sign in</strong> to upload PDF, Word, or text files and summarize them.
               </p>
-              <button className="btn" style={{ fontSize: 12, padding: '6px 14px' }} onClick={handleUpgrade}>
-                Upgrade to unlock
+              <button className="btn" style={{ fontSize: 12, padding: '6px 14px' }} onClick={() => setShowAuthModal(true)}>
+                Sign in
               </button>
             </div>
-          ) : selectedFile ? (
+          ) : (
+            <>
+              {plan === 'free' && (
+                <p style={{ fontSize: 11, color: 'var(--text2)', margin: '0 0 10px', lineHeight: 1.45 }}>
+                  <strong>Free plan:</strong> 1 document upload per day · counts toward your 3 daily summaries · max {maxUploadMb} MB
+                </p>
+              )}
+              {selectedFile ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
@@ -589,7 +632,7 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
               </div>
               <button
                 onClick={summarizeDocument}
-                disabled={loading || dailyLimitReached}
+                disabled={loading || dailyLimitReached || fileUploadLimitReached}
                 className="btn"
                 style={{ width: '100%', padding: '7px', fontSize: 12, fontWeight: 700 }}
               >
@@ -598,23 +641,33 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
             </div>
           ) : (
             <button
-              onClick={() => fileInputRef.current?.click()}
+              type="button"
+              onClick={() => !dailyLimitReached && !fileUploadLimitReached && fileInputRef.current?.click()}
+              disabled={dailyLimitReached || fileUploadLimitReached}
               style={{
-                width: '100%', padding: '20px 16px', cursor: 'pointer',
+                width: '100%', padding: '20px 16px', cursor: (dailyLimitReached || fileUploadLimitReached) ? 'not-allowed' : 'pointer',
                 borderRadius: 'var(--radius-lg)', fontSize: 13, textAlign: 'center',
                 border: '2px dashed var(--accent)', background: 'var(--bg2)',
                 color: 'var(--accent)', display: 'flex', flexDirection: 'column',
                 alignItems: 'center', gap: 6, transition: 'all 0.15s',
+                opacity: (dailyLimitReached || fileUploadLimitReached) ? 0.55 : 1,
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(109,74,247,0.06)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg2)')}
+              onMouseEnter={e => {
+                if (dailyLimitReached || fileUploadLimitReached) return;
+                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(109,74,247,0.06)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg2)';
+              }}
             >
               <span style={{ fontSize: 28 }}>📂</span>
               <span style={{ fontWeight: 600 }}>Upload your Document</span>
               <span style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 400 }}>
-                PDF, Word (.docx), or plain text · Max 10 MB
+                PDF, Word (.docx), or plain text · Max {maxUploadMb} MB
               </span>
             </button>
+          )}
+            </>
           )}
           <input
             ref={fileInputRef}
@@ -632,7 +685,23 @@ export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
           background: '#fef2f2', border: '1px solid #fecaca',
           borderRadius: 'var(--radius)', padding: '9px 12px', fontSize: 12,
           color: 'var(--danger)', marginBottom: 12,
-        }}>{error}</div>
+        }}>
+          {error}
+          {!isGuest && (isDailySummaryLimitError(error) || isDailyDocumentUploadLimitError(error)) && (
+            <>
+              {' '}
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={handleUpgrade}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleUpgrade(); } }}
+                style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Upgrade for more
+              </span>
+            </>
+          )}
+        </div>
       )}
 
       {/* ── Loading ── */}

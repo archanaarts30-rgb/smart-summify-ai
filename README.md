@@ -415,7 +415,7 @@ Once approved, the extension gets a **permanent store ID**.
 | Summaries per day | 3 | 30 | Unlimited |
 | Summary sizes | Short only | Short, Medium, Full | Short, Medium, Full |
 | Chat messages per summary | 0 | 10 | Unlimited |
-| File uploads | No | Yes (up to 10 MB) | Yes (up to 50 MB) |
+| File uploads | 1/day (≤10 MB) | Yes (up to 10 MB) | Yes (up to 50 MB) |
 | Export (PDF, DOCX, TXT) | No | Yes | Yes |
 | Social media posts | No | Up to 3 | Up to 5 |
 | PPT Slides | No | No | Yes |

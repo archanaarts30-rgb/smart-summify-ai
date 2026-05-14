@@ -67,6 +67,7 @@ router.get('/stats', authenticate, async (req, res) => {
       { count: summariesToday },
       { count: summariesThisMonth },
       { count: totalSummaries },
+      { count: fileUploadsToday },
       timeSavedTodaySec,
       timeSavedThisMonthSec,
       timeSavedTotalSec,
@@ -85,6 +86,12 @@ router.get('/stats', authenticate, async (req, res) => {
         .from('summaries')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', req.user.id),
+      supabase
+        .from('summaries')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', req.user.id)
+        .gte('created_at', todayStart)
+        .not('file_name', 'is', null),
       sumTimeSavedSec(req.user.id, todayStart),
       sumTimeSavedSec(req.user.id, monthStart),
       sumTimeSavedSec(req.user.id, null),
@@ -98,6 +105,11 @@ router.get('/stats', authenticate, async (req, res) => {
         summariesThisMonth,
         totalSummaries,
         dailyLimit:   limits.summaries_per_day === Infinity ? null : limits.summaries_per_day,
+        fileUploadsToday,
+        fileUploadDailyLimit:
+          limits.file_uploads_per_day == null || limits.file_uploads_per_day === Infinity
+            ? null
+            : limits.file_uploads_per_day,
         monthlyLimit: null,
         timeSavedTodaySec,
         timeSavedThisMonthSec,

@@ -60,7 +60,7 @@ Aligned with [`backend/src/middleware/auth.js`](../backend/src/middleware/auth.j
 |---|---|---|---|
 | Summaries per day | 3 | 30 | Unlimited |
 | Summary lengths | Short | Short, Medium, Full | Short, Medium, Full |
-| PDF / document upload | — | ✓ (≤ 10 MB) | ✓ (≤ 50 MB) |
+| PDF / document upload | ✓ (1/day, ≤ 10 MB) | ✓ (≤ 10 MB) | ✓ (≤ 50 MB) |
 | Export PDF / DOCX / TXT | — | ✓ | ✓ |
 | Chat with summary | — | ✓ (10 msgs / summary) | ✓ (unlimited) |
 | Social post cards | — | ✓ (1–3 cards/request) | ✓ (1–6 cards/request) |
@@ -419,6 +419,7 @@ Returns the user profile and per-plan **limits** (same envelope the extension ne
     "chat_messages_per_summary": 10,
     "sizes_allowed": ["small", "medium", "large"],
     "pdf_upload": true,
+    "file_uploads_per_day": null,
     "export": true,
     "audio": true,
     "social_images": 3,
@@ -445,6 +446,8 @@ Returns the user profile and per-plan **limits** (same envelope the extension ne
     "summariesThisMonth": 18,
     "totalSummaries": 45,
     "dailyLimit": 30,
+    "fileUploadsToday": 0,
+    "fileUploadDailyLimit": null,
     "monthlyLimit": null,
     "timeSavedTodaySec": 1200,
     "timeSavedThisMonthSec": 18000,

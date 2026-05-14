@@ -23,12 +23,12 @@ const PLAN_CONFIG = {
       '3 summaries per day',
       'Short summaries only',
       'Page summarization',
+      '1 document upload per day (PDF, Word, ≤10 MB)',
       'Copy to clipboard',
       'Text-to-speech (listen)',
     ],
     missing: [
       'Medium & Full summaries',
-      'File upload (PDF, Word)',
       'Export to PDF / Word / Text',
       'Chat with content',
       'Social media images',
