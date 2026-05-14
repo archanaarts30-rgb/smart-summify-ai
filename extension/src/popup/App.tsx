@@ -16,6 +16,7 @@ export default function App() {
   const { user, setUser, clearUser, setUsage, theme, fontSize, showAuthModal, setShowAuthModal } = useStore();
   const [tab, setTab] = useState<Tab>('summary');
   const [view, setView] = useState<View>('main');
+  const [profileInitialTab, setProfileInitialTab] = useState<'profile' | 'billing'>('profile');
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -70,7 +71,10 @@ export default function App() {
 
       {/* ── Profile view ── */}
       {view === 'profile' && (
-        <ProfilePage onBack={() => { setFeedbackOpen(false); setView('main'); }} />
+        <ProfilePage
+          initialInnerTab={profileInitialTab}
+          onBack={() => { setFeedbackOpen(false); setView('main'); }}
+        />
       )}
 
       {/* ── Main view ── */}
@@ -78,7 +82,7 @@ export default function App() {
         <>
           <Header
             onSignInClick={() => setShowAuthModal(true)}
-            onAvatarClick={() => { setFeedbackOpen(false); setView('profile'); }}
+            onAvatarClick={() => { setFeedbackOpen(false); setProfileInitialTab('profile'); setView('profile'); }}
             feedbackOpen={feedbackOpen}
             onFeedbackClick={() => setFeedbackOpen(o => !o)}
           />
@@ -111,7 +115,15 @@ export default function App() {
 
           {/* Tab content */}
           <div style={{ background: 'var(--bg)' }}>
-            {tab === 'summary' && <SummaryTab />}
+            {tab === 'summary' && (
+              <SummaryTab
+                onOpenPlanBilling={() => {
+                  setFeedbackOpen(false);
+                  setProfileInitialTab('billing');
+                  setView('profile');
+                }}
+              />
+            )}
             {tab === 'history' && <HistoryTab />}
             {tab === 'stats'   && <StatsTab />}
           </div>

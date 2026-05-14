@@ -3,7 +3,7 @@ import DOMPurify from 'dompurify';
 import { useStore, GUEST_FREE_LIMIT, emptyUsageForPlan } from '../store';
 import {
   summarizeContent, summarizeContentGuest, summarizeFile,
-  subscribe, exportSummary, generateSocialImages, generateSlides, sendChatMessage,
+  exportSummary, generateSocialImages, generateSlides, sendChatMessage,
 } from '../lib/api';
 import LangIcon from '../icons/LangIcon';
 
@@ -127,8 +127,13 @@ const THEME_COLORS: Record<string, string> = {
 
 type SourceMode = 'page' | 'document';
 
+interface SummaryTabProps {
+  /** Opens Account → Plan & Billing (signed-in users); guests are sent to sign-in */
+  onOpenPlanBilling: () => void;
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function SummaryTab() {
+export default function SummaryTab({ onOpenPlanBilling }: SummaryTabProps) {
   const {
     user, summarySize, setSummarySize, currentSummary, setCurrentSummary, setAudioPlaying,
     guestSummaryCount, incrementGuestCount, setShowAuthModal,
@@ -356,14 +361,13 @@ export default function SummaryTab() {
     }
   };
 
-  // ── Upgrade ───────────────────────────────────────────────────────
-  const handleUpgrade = async () => {
-    try {
-      const { checkoutUrl } = await subscribe('basic');
-      if (checkoutUrl) chrome.tabs.create({ url: checkoutUrl });
-    } catch (e: any) {
-      setError(e.message || 'Could not start checkout. Please try again.');
+  // ── Plan / billing ────────────────────────────────────────────────
+  const handleUpgrade = () => {
+    if (isGuest) {
+      setShowAuthModal(true);
+      return;
     }
+    onOpenPlanBilling();
   };
 
   // ── Chat ──────────────────────────────────────────────────────────
@@ -1035,10 +1039,11 @@ export default function SummaryTab() {
           marginTop: 10, padding: '9px 12px', background: '#f5f3ff',
           border: '1px solid #ddd6fe', borderRadius: 'var(--radius-lg)', fontSize: 12, color: '#5b21b6',
         }}>
-          <strong>Free plan:</strong> 3 summaries/day, short size only.{' '}
+          <strong>Free plan:</strong>{' '}
+          3 summaries per day, Short length only — upgrade for longer summaries, higher limits, and more tools.{' '}
           <span onClick={handleUpgrade}
             style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
-            Upgrade for $4.99/mo →
+            View Plan & Billing →
           </span>
         </div>
       )}

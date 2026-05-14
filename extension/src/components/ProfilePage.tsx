@@ -4,11 +4,13 @@ import { updateProfile, subscribe, openBillingPortal, getUsageStats } from '../l
 import { logout } from '../lib/firebase';
 import type { UsageStats } from '../store';
 
+type InnerTab = 'profile' | 'billing';
+
 interface ProfilePageProps {
   onBack: () => void;
+  /** When opening Account from an upgrade prompt, land on Plan & Billing */
+  initialInnerTab?: InnerTab;
 }
-
-type InnerTab = 'profile' | 'billing';
 
 const PLAN_CONFIG = {
   free: {
@@ -83,9 +85,9 @@ function getInitials(displayName: string): string {
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
-export default function ProfilePage({ onBack }: ProfilePageProps) {
+export default function ProfilePage({ onBack, initialInnerTab = 'profile' }: ProfilePageProps) {
   const { user, setUser, clearUser, usage, setUsage } = useStore();
-  const [innerTab, setInnerTab] = useState<InnerTab>('profile');
+  const [innerTab, setInnerTab] = useState<InnerTab>(initialInnerTab);
 
   useEffect(() => {
     if (!user) return;
